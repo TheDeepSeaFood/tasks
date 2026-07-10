@@ -2,3 +2,5 @@ node_modules/
 .DS_Store
 *.log
 apps-script/.clasp.json
+
+tasks/
