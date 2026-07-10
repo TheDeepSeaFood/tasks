@@ -56,6 +56,35 @@ function route(action, payload, user) {
     case 'listBoards':
       return { boards: getBoardList() };
 
+    // One-shot for sign-in: identity + boards together.
+    case 'bootstrap': {
+      const v = visibleContext_(user);
+      return {
+        me: { email: user.email, name: user.name, isAdmin: v.isAdmin, subtree: Object.keys(v.set) },
+        boards: getBoardList()
+      };
+    }
+
+    // One-shot for opening a board: config + visible tasks + pickers + companies.
+    case 'boardData': {
+      const v = visibleContext_(user);
+      const tasks = getBoardTasks(payload.taskType).filter(function (t) {
+        return canSeeTask({
+          AssignerEmail: String(t.AssignerEmail).toLowerCase(),
+          AssigneeEmail: String(t.AssigneeEmail).toLowerCase()
+        }, v.set);
+      });
+      const users = Object.keys(v.set).map(function (em) {
+        return { email: em, name: (v.users[em] && v.users[em].name) || em };
+      });
+      return {
+        fields: getBoardConfig(payload.taskType),
+        tasks: tasks,
+        users: users,
+        companies: getCompanies()
+      };
+    }
+
     case 'getBoardConfig':
       return { fields: getBoardConfig(payload.taskType) };
 

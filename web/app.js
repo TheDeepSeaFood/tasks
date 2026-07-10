@@ -41,8 +41,8 @@ window.addEventListener('load', function () {
 
 async function onSignedIn() {
   try {
-    State.me = await apiCall('whoami');
-    const b = await apiCall('listBoards');
+    const b = await apiCall('bootstrap');   // identity + boards in one round-trip
+    State.me = b.me;
     State.boards = b.boards;
     $('#signin-view').classList.add('hidden');
     $('#app-view').classList.remove('hidden');
@@ -103,12 +103,11 @@ async function renderBoard(taskType) {
   $('#back-btn').classList.remove('hidden');
   const main = $('#main'); main.innerHTML = '<p class="muted">Loading…</p>';
   try {
-    const cfg = await apiCall('getBoardConfig', { taskType: taskType });
-    const data = await apiCall('listTasks', { taskType: taskType });
-    State.board = { taskType: taskType, fields: cfg.fields };
+    const data = await apiCall('boardData', { taskType: taskType }); // config+tasks+users+companies, one round-trip
+    State.board = { taskType: taskType, fields: data.fields };
     State.tasks = data.tasks;
-    try { State.users = (await apiCall('listUsers')).users; } catch (e) { State.users = []; }
-    try { State.companies = (await apiCall('listCompanies')).companies; } catch (e) { State.companies = []; }
+    State.users = data.users || [];
+    State.companies = data.companies || [];
     State.companyFilter = '';
     drawKanban();
   } catch (e) { main.innerHTML = '<p class="error">' + esc(e.message) + '</p>'; }
