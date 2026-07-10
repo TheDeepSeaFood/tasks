@@ -57,8 +57,10 @@ function routeChanged() {
   const h = location.hash.replace(/^#/, '');
   const parts = h.split('/');
   if (parts[0] !== 'hierarchy') window.__H = null; // drop unsaved hierarchy edits on leave
+  if (parts[0] !== 'companies') window.__C = null; // drop unsaved company edits on leave
   if (parts[0] === 'board' && parts[1]) return renderBoard(decodeURIComponent(parts[1]));
   if (parts[0] === 'hierarchy') return renderHierarchy();
+  if (parts[0] === 'companies') return renderCompanies();
   return renderHome();
 }
 
@@ -89,6 +91,9 @@ function renderHome() {
     const admin = el('button', 'link-btn', '⚙ Manage user hierarchy');
     admin.onclick = function () { nav('hierarchy'); };
     main.appendChild(admin);
+    const comp = el('button', 'link-btn', '🏢 Manage companies');
+    comp.onclick = function () { nav('companies'); };
+    main.appendChild(comp);
   }
 }
 
@@ -401,6 +406,57 @@ async function renderHierarchy() {
   window.__H = H;
 }
 function renderHierarchyFrom(H) { window.__H = H; renderHierarchy(); }
+
+/* -------------------- companies editor (admin) -------------------- */
+async function renderCompanies() {
+  $('#title').textContent = 'Companies';
+  $('#back-btn').classList.remove('hidden');
+  const main = $('#main'); main.innerHTML = '<p class="muted">Loading…</p>';
+
+  let C;
+  if (window.__C) {
+    C = window.__C;
+  } else {
+    try { C = (await apiCall('getCompaniesAdmin')).companies; }
+    catch (e) { main.innerHTML = '<p class="error">' + esc(e.message) + '</p>'; return; }
+  }
+  window.__C = C;
+
+  main.innerHTML = '';
+  main.appendChild(el('p', 'muted', 'Sub-companies under the group. Inactive ones stay on old tickets but disappear from the picker.'));
+
+  const list = el('div', 'tree');
+  C.forEach(function (co, idx) {
+    const row = el('div', 'tree-row');
+    const nameIn = el('input', 'co-name'); nameIn.type = 'text'; nameIn.value = co.name;
+    nameIn.oninput = function () { C[idx].name = nameIn.value; };
+    row.appendChild(nameIn);
+
+    const act = el('label', 'chk');
+    const cb = el('input'); cb.type = 'checkbox'; cb.checked = co.active !== false;
+    cb.onchange = function () { C[idx].active = cb.checked; };
+    act.appendChild(cb); act.appendChild(document.createTextNode(' active'));
+    row.appendChild(act);
+
+    const del = el('button', 'icon-btn danger', '🗑');
+    del.onclick = function () { C.splice(idx, 1); renderCompanies(); };
+    row.appendChild(del);
+
+    list.appendChild(row);
+  });
+  main.appendChild(list);
+
+  const add = el('button', 'btn', '+ Add company');
+  add.onclick = function () { C.push({ name: '', active: true }); renderCompanies(); };
+  main.appendChild(add);
+
+  const save = el('button', 'btn primary wide', 'Save companies');
+  save.onclick = async function () {
+    try { await apiCall('saveCompanies', { companies: C }); window.__C = null; toast('Saved'); nav(''); }
+    catch (e) { toast(e.message); }
+  };
+  main.appendChild(save);
+}
 
 /* --------------------------- chrome --------------------------- */
 function showSheet(node) {

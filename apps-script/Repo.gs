@@ -79,6 +79,23 @@ function getCompanies() {
     .map(function (c) { return String(c.name); });
 }
 
+/** All companies incl. inactive, for the admin manager. */
+function getCompaniesAll() {
+  return readObjects_('Companies').map(function (c) {
+    return { name: String(c.name), active: !(c.active === false || c.active === 'FALSE') };
+  });
+}
+
+function writeCompanies(list) {
+  const sh = ss_().getSheetByName('Companies');
+  sh.clearContents();
+  sh.getRange(1, 1, 1, 2).setValues([['name', 'active']]);
+  const rows = list
+    .filter(function (c) { return c.name && String(c.name).trim() !== ''; })
+    .map(function (c) { return [String(c.name).trim(), c.active !== false]; });
+  if (rows.length) sh.getRange(2, 1, rows.length, 2).setValues(rows);
+}
+
 /** Append one audit-trail row. */
 function appendHistory(taskType, taskId, actorEmail, action, field, oldVal, newVal) {
   ss_().getSheetByName('History').appendRow([

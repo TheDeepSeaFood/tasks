@@ -135,6 +135,11 @@ body {
 .tl-when { font-size: 11px; color: var(--muted); }
 .tl-what { font-size: 14px; }
 
+/* companies editor */
+.co-name { flex: 1 1 160px; padding: 9px 11px; border-radius: 8px; border: 1px solid var(--line);
+  background: var(--bg); color: var(--ink); font: inherit; }
+.icon-btn.danger { color: var(--danger); font-size: 16px; }
+
 /* toast */
 .toast { position: fixed; left: 50%; bottom: 88px; transform: translateX(-50%) translateY(20px);
   background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 10px; max-width: 88%;

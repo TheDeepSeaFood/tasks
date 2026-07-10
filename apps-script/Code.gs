@@ -45,6 +45,20 @@ function route(action, payload, user) {
     case 'getHistory':
       return { history: getHistory(payload.taskType, payload.taskId) };
 
+    case 'getCompaniesAdmin': {
+      const v = visibleContext_(user);
+      if (!v.isAdmin) throw new Error('Admins only');
+      return { companies: getCompaniesAll() };
+    }
+
+    case 'saveCompanies': {
+      const v = visibleContext_(user);
+      if (!v.isAdmin) throw new Error('Admins only');
+      const lock = LockService.getScriptLock(); lock.waitLock(10000);
+      try { writeCompanies(payload.companies || []); return { ok: true }; }
+      finally { lock.releaseLock(); }
+    }
+
     case 'listTasks': {
       const v = visibleContext_(user);
       const tasks = getBoardTasks(payload.taskType).filter(function (t) {
