@@ -80,7 +80,7 @@ function renderHome() {
     const grid = el('div', 'board-grid');
     byDept[dept].forEach(function (b) {
       const card = el('button', 'board-tile');
-      card.innerHTML = '<span class="tile-type">' + esc(b.taskType) + '</span>';
+      card.innerHTML = '<span class="tile-type">' + esc(b.taskType) + '</span><span class="tile-go">Open →</span>';
       card.onclick = function () { nav('board/' + encodeURIComponent(b.taskType)); };
       grid.appendChild(card);
     });
@@ -499,6 +499,15 @@ function applyTheme(mode) {
   const btn = $('#theme-btn');
   if (btn) btn.textContent = mode === 'dark' ? '☀' : '☾';
 }
+
+// pointer-following spotlight on interactive surfaces
+document.addEventListener('pointermove', function (e) {
+  const t = e.target.closest && e.target.closest('.board-tile, .card');
+  if (!t) return;
+  const r = t.getBoundingClientRect();
+  t.style.setProperty('--mx', ((e.clientX - r.left) / r.width * 100) + '%');
+  t.style.setProperty('--my', ((e.clientY - r.top) / r.height * 100) + '%');
+}, { passive: true });
 
 document.addEventListener('DOMContentLoaded', function () {
   applyTheme(localStorage.getItem('theme') || 'light'); // default light
