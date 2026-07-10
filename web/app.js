@@ -105,19 +105,49 @@ function renderHome() {
 }
 
 /* --------------------------- board ---------------------------- */
+function applyBoardData(taskType, data) {
+  State.board = { taskType: taskType, fields: data.fields };
+  State.tasks = data.tasks || [];
+  State.users = data.users || [];
+  State.companies = data.companies || [];
+}
+function saveBoardCache(taskType, data) {
+  try { localStorage.setItem('board:' + taskType, JSON.stringify(data)); } catch (e) { /* quota/private */ }
+}
+function loadBoardCache(taskType) {
+  try { const s = localStorage.getItem('board:' + taskType); return s ? JSON.parse(s) : null; } catch (e) { return null; }
+}
+/** Snapshot current board State into the cache (after local edits). */
+function persistBoardCache() {
+  if (!State.board) return;
+  saveBoardCache(State.board.taskType, {
+    fields: State.board.fields, tasks: State.tasks, users: State.users, companies: State.companies
+  });
+}
+
 async function renderBoard(taskType) {
   $('#title').textContent = taskType;
   $('#back-btn').classList.remove('hidden');
-  const main = $('#main'); main.innerHTML = '<p class="muted">Loading…</p>';
+  const main = $('#main');
+  State.companyFilter = '';
+
+  // Instant paint from the last-seen data, if we have it…
+  const cached = loadBoardCache(taskType);
+  if (cached) { applyBoardData(taskType, cached); drawKanban(); }
+  else { main.innerHTML = '<p class="muted">Loading…</p>'; }
+
+  // …then refresh from the network (foreground if no cache, background if cached).
   try {
-    const data = await apiCall('boardData', { taskType: taskType }); // config+tasks+users+companies, one round-trip
-    State.board = { taskType: taskType, fields: data.fields };
-    State.tasks = data.tasks;
-    State.users = data.users || [];
-    State.companies = data.companies || [];
-    State.companyFilter = '';
-    drawKanban();
-  } catch (e) { main.innerHTML = '<p class="error">' + esc(e.message) + '</p>'; }
+    const data = await apiCall('boardData', { taskType: taskType });
+    saveBoardCache(taskType, data);
+    if (location.hash.indexOf(encodeURIComponent(taskType)) >= 0 || (State.board && State.board.taskType === taskType)) {
+      applyBoardData(taskType, data);
+      drawKanban();
+    }
+  } catch (e) {
+    if (!cached) main.innerHTML = '<p class="error">' + esc(e.message) + '</p>';
+    // If we had a cached view, keep showing it rather than replacing with an error.
+  }
 }
 
 function statusField() {
@@ -446,6 +476,7 @@ async function submitEditor(task, creating, btn) {
       if (pk && changes[pk] != null) task.AssigneeEmail = internalAssignees(changes);
     }
     closeSheet();
+    persistBoardCache();
     drawKanban();
   } catch (e) {
     toast(e.message);
