@@ -3,9 +3,11 @@
   --line: #e2e8ee; --brand: #0b3d5c; --brand-2: #1573a6; --accent: #f4a300;
   --danger: #c0392b; --radius: 14px; --shadow: 0 2px 10px rgba(20,36,48,.08);
 }
-@media (prefers-color-scheme: dark) {
-  :root { --bg:#0e1620; --surface:#182634; --ink:#e8eef3; --muted:#8fa3b2;
-    --line:#243544; --brand:#0e4d73; --brand-2:#2a9fd6; --shadow:0 2px 12px rgba(0,0,0,.4); }
+/* Dark theme applies only when explicitly chosen (data-theme="dark").
+   Default is light regardless of OS setting. */
+:root[data-theme="dark"] {
+  --bg:#0e1620; --surface:#182634; --ink:#e8eef3; --muted:#8fa3b2;
+  --line:#243544; --brand:#0e4d73; --brand-2:#2a9fd6; --shadow:0 2px 12px rgba(0,0,0,.4);
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; }

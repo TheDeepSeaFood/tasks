@@ -493,7 +493,20 @@ function toast(msg) {
   setTimeout(function () { t.classList.remove('show'); }, 3200);
 }
 
+function applyTheme(mode) {
+  if (mode === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+  else document.documentElement.removeAttribute('data-theme');
+  const btn = $('#theme-btn');
+  if (btn) btn.textContent = mode === 'dark' ? '☀' : '☾';
+}
+
 document.addEventListener('DOMContentLoaded', function () {
+  applyTheme(localStorage.getItem('theme') || 'light'); // default light
   $('#back-btn').onclick = function () { history.length > 1 ? history.back() : nav(''); };
   $('#signout-btn').onclick = signOut;
+  $('#theme-btn').onclick = function () {
+    const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    localStorage.setItem('theme', next);
+    applyTheme(next);
+  };
 });
