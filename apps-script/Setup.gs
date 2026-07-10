@@ -59,6 +59,22 @@ function setup_seedMarketingConfig() {
   sh.getRange(sh.getLastRow() + 1, 1, rows.length, rows[0].length).setValues(rows);
 }
 
+/** Trim the empty padding rows/columns Google adds (default 1000x26) so every
+ *  read scans only real data. Safe to run anytime; keeps a small buffer. */
+function setup_trimBlanks() {
+  const tabs = ['Users', 'Hierarchy', 'Companies', 'History', 'Boards', 'Marketing'];
+  tabs.forEach(function (name) {
+    const sh = ss_().getSheetByName(name);
+    if (!sh) return;
+    const lastRow = Math.max(sh.getLastRow(), 1);
+    const lastCol = Math.max(sh.getLastColumn(), 1);
+    const maxRows = sh.getMaxRows();
+    const maxCols = sh.getMaxColumns();
+    if (maxRows > lastRow + 1) sh.deleteRows(lastRow + 2, maxRows - (lastRow + 1));
+    if (maxCols > lastCol) sh.deleteColumns(lastCol + 1, maxCols - lastCol);
+  });
+}
+
 /** Fill TaskID + CreatedAt for any marketing rows pasted without them. */
 function setup_backfillMarketingSystemCols() {
   const sh = ss_().getSheetByName('Marketing');

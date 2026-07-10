@@ -85,7 +85,16 @@ function getBoardConfig(taskType) {
     .sort(function (a, b) { return a.order - b.order; });
 }
 
-function getBoardTasks(taskType) { return readObjects_(taskType); }
+function getBoardTasks(taskType) {
+  const cache = CacheService.getScriptCache();
+  const key = 'tasks_' + taskType;
+  const hit = cache.get(key);
+  if (hit) return JSON.parse(hit);
+  const data = readObjects_(taskType);
+  try { cache.put(key, JSON.stringify(data), 15); } catch (e) { /* >100KB: skip */ }
+  return data;
+}
+function clearBoardTasksCache_(taskType) { CacheService.getScriptCache().remove('tasks_' + taskType); }
 
 function getCompanies() {
   return cachedObjects_('Companies')
@@ -138,6 +147,7 @@ function appendTask(taskType, obj) {
   const headers = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
   const row = headers.map(function (h) { return obj.hasOwnProperty(h) ? obj[h] : ''; });
   sh.appendRow(row);
+  clearBoardTasksCache_(taskType);
 }
 
 function findTaskRowIndex_(sh, headers, taskId) {
@@ -160,6 +170,7 @@ function updateTaskFields(taskType, taskId, changes) {
   });
   const luc = headers.indexOf('LastUpdateDate');
   if (luc >= 0) sh.getRange(rowIdx, luc + 1).setValue(new Date());
+  clearBoardTasksCache_(taskType);
 }
 
 function writeUsers(users) {
