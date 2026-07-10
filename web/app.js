@@ -294,6 +294,19 @@ function userName(email) {
 }
 
 /** Chip multi-picker: internal users (stored as email) + external names (raw text). */
+/** Distinct external partner names (tokens without '@') used in this people
+ *  field across the currently loaded tasks — for the external autocomplete. */
+function externalPartners(fieldKey) {
+  const set = {};
+  (State.tasks || []).forEach(function (t) {
+    String(t[fieldKey] || '').split('|').forEach(function (tok) {
+      tok = tok.trim();
+      if (tok && tok.indexOf('@') < 0) set[tok] = true;
+    });
+  });
+  return Object.keys(set).sort();
+}
+
 function buildPeopleField(f, task, editable) {
   const wrap = el('label', 'fld');
   wrap.appendChild(el('span', 'fld-label', esc(f.label) + (f.isUpdate ? '' : ' •')));
@@ -340,11 +353,18 @@ function buildPeopleField(f, task, editable) {
       sel.value = '';
     };
     const ext = el('input', 'people-ext'); ext.type = 'text';
-    ext.placeholder = '+ external (agency, name)…';
+    ext.placeholder = '+ external partner (pick or type)…';
+    // Autocomplete of external partners already used on other tasks — pick an
+    // existing one or type a new name.
+    const dl = el('datalist'); dl.id = 'ext-partners-' + f.fieldKey;
+    externalPartners(f.fieldKey).forEach(function (name) {
+      const o = el('option'); o.value = name; dl.appendChild(o);
+    });
+    ext.setAttribute('list', dl.id);
     function addExt() { const val = ext.value.trim(); if (val && tokens.indexOf(val) < 0) { tokens.push(val); sync(); } ext.value = ''; }
     ext.onkeydown = function (e) { if (e.key === 'Enter') { e.preventDefault(); addExt(); } };
     const addBtn = el('button', 'btn ghost people-add', 'Add'); addBtn.type = 'button'; addBtn.onclick = addExt;
-    controls.appendChild(sel); controls.appendChild(ext); controls.appendChild(addBtn);
+    controls.appendChild(sel); controls.appendChild(ext); controls.appendChild(addBtn); controls.appendChild(dl);
     wrap.appendChild(controls);
   }
 
