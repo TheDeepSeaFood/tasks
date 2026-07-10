@@ -2,6 +2,19 @@
 
 function ss_() { return SpreadsheetApp.openById(SPREADSHEET_ID); }
 
+/** Cached read for small, rarely-changing tables (Users/Hierarchy/Boards/Companies).
+ *  Cuts repeated sheet I/O that made board loads slow. Invalidated on writes. */
+function cachedObjects_(sheetName, ttl) {
+  const cache = CacheService.getScriptCache();
+  const key = 'tbl_' + sheetName;
+  const hit = cache.get(key);
+  if (hit) return JSON.parse(hit);
+  const data = readObjects_(sheetName);
+  try { cache.put(key, JSON.stringify(data), ttl || 90); } catch (e) { /* >100KB: skip cache */ }
+  return data;
+}
+function clearTableCache_(sheetName) { CacheService.getScriptCache().remove('tbl_' + sheetName); }
+
 function readObjects_(sheetName) {
   const sh = ss_().getSheetByName(sheetName);
   if (!sh) throw new Error('Missing tab: ' + sheetName);
@@ -21,7 +34,7 @@ function toBool_(v) { return v === true || v === 'TRUE' || v === 'true'; }
 
 function getUsers() {
   const byId = {};
-  readObjects_('Users').forEach(function (u) {
+  cachedObjects_('Users').forEach(function (u) {
     const email = String(u.email).toLowerCase();
     byId[email] = {
       email: email,
@@ -36,7 +49,7 @@ function getUsers() {
 }
 
 function getEdges() {
-  return readObjects_('Hierarchy').map(function (e) {
+  return cachedObjects_('Hierarchy').map(function (e) {
     return {
       parentEmail: String(e.parentEmail).toLowerCase(),
       childEmail: String(e.childEmail).toLowerCase()
@@ -47,7 +60,7 @@ function getEdges() {
 /** Distinct boards: [{department, taskType}] */
 function getBoardList() {
   const seen = {}, out = [];
-  readObjects_('Boards').forEach(function (r) {
+  cachedObjects_('Boards').forEach(function (r) {
     const key = r.department + '||' + r.taskType;
     if (!seen[key]) { seen[key] = true; out.push({ department: r.department, taskType: r.taskType }); }
   });
@@ -56,7 +69,7 @@ function getBoardList() {
 
 /** Field definitions for one board, ordered. */
 function getBoardConfig(taskType) {
-  return readObjects_('Boards')
+  return cachedObjects_('Boards')
     .filter(function (r) { return r.taskType === taskType; })
     .map(function (r) {
       return {
@@ -75,7 +88,7 @@ function getBoardConfig(taskType) {
 function getBoardTasks(taskType) { return readObjects_(taskType); }
 
 function getCompanies() {
-  return readObjects_('Companies')
+  return cachedObjects_('Companies')
     .filter(function (c) { return !(c.active === false || c.active === 'FALSE'); })
     .map(function (c) { return String(c.name); });
 }
@@ -95,6 +108,7 @@ function writeCompanies(list) {
     .filter(function (c) { return c.name && String(c.name).trim() !== ''; })
     .map(function (c) { return [String(c.name).trim(), c.active !== false]; });
   if (rows.length) sh.getRange(2, 1, rows.length, 2).setValues(rows);
+  clearTableCache_('Companies');
 }
 
 /** Append one audit-trail row. */
@@ -159,6 +173,7 @@ function writeUsers(users) {
       return [String(u.email).toLowerCase(), u.name || '', u.designation || '', u.active !== false, !!u.superDev, !!u.itManagerGroup];
     });
   if (rows.length) sh.getRange(2, 1, rows.length, headers.length).setValues(rows);
+  clearTableCache_('Users');
 }
 
 function writeEdges(edges) {
@@ -169,4 +184,5 @@ function writeEdges(edges) {
     return [String(e.parentEmail).toLowerCase(), String(e.childEmail).toLowerCase()];
   });
   if (rows.length) sh.getRange(2, 1, rows.length, 2).setValues(rows);
+  clearTableCache_('Hierarchy');
 }
