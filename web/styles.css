@@ -334,6 +334,8 @@ body::after {
 .btn:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
 .btn:active { transform: translateY(0) scale(.98); }
 .btn.ghost { background: transparent; }
+.btn.danger { background: transparent; color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, var(--line)); margin-left: auto; }
+.btn.danger:hover { background: color-mix(in srgb, var(--danger) 12%, transparent); }
 .btn.primary {
   color: #fff; border: 0;
   background: linear-gradient(120deg, var(--brand), var(--brand-2) 60%, var(--brand-3));

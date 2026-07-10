@@ -6,6 +6,10 @@ function handle(e) {
   try {
     const raw = (e && e.postData && e.postData.contents) ? e.postData.contents : '{}';
     const req = JSON.parse(raw);
+    // Keep-warm ping (no auth): just wakes the instance so real calls are fast.
+    if (req.action === 'ping') {
+      return ContentService.createTextOutput('{"ok":true}').setMimeType(ContentService.MimeType.JSON);
+    }
     const identity = verifyIdToken(req.idToken);
     // Authorization = membership. Any domain is fine (incl. external users); you
     // must be a known, active user. Admins add people in the hierarchy editor.
@@ -190,6 +194,20 @@ function route(action, payload, user) {
         Object.keys(changes).forEach(function (k) {
           appendHistory(payload.taskType, payload.taskId, user.email, 'update', k, task[k], changes[k]);
         });
+        return { ok: true };
+      } finally { lock.releaseLock(); }
+    }
+
+    case 'deleteTask': {
+      const v = visibleContext_(user);
+      const task = getTaskById(payload.taskType, payload.taskId);
+      if (!task) throw new Error('Task not found');
+      const isCreator = String(task.AssignerEmail).toLowerCase() === user.email.toLowerCase();
+      if (!isCreator && !v.isAdmin) throw new Error('Only the task creator can delete this task');
+      const lock = LockService.getScriptLock(); lock.waitLock(10000);
+      try {
+        deleteTaskRow(payload.taskType, payload.taskId);
+        appendHistory(payload.taskType, payload.taskId, user.email, 'delete', '', (task.Task || ''), '');
         return { ok: true };
       } finally { lock.releaseLock(); }
     }

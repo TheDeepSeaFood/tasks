@@ -150,6 +150,15 @@ function appendTask(taskType, obj) {
   clearBoardTasksCache_(taskType);
 }
 
+function deleteTaskRow(taskType, taskId) {
+  const sh = ss_().getSheetByName(taskType);
+  const headers = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+  const rowIdx = findTaskRowIndex_(sh, headers, taskId);
+  if (rowIdx < 0) throw new Error('Task not found');
+  sh.deleteRow(rowIdx);
+  clearBoardTasksCache_(taskType);
+}
+
 function findTaskRowIndex_(sh, headers, taskId) {
   const idCol = headers.indexOf('TaskID');
   const values = sh.getDataRange().getValues();

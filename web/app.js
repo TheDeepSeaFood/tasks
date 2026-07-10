@@ -32,6 +32,10 @@ const fmtDate = function (v) {
 function inSub(email) { return State.me.subtree.indexOf(String(email).toLowerCase()) >= 0; }
 function canDefine(t) { return State.me.isAdmin || inSub(t.AssignerEmail); }
 function canUpdate(t) { return State.me.isAdmin || inSub(t.AssigneeEmail) || inSub(t.AssignerEmail); }
+function canDelete(t) {
+  return State.me.isAdmin ||
+    String(t.AssignerEmail || '').toLowerCase() === String(State.me.email || '').toLowerCase();
+}
 
 /* ---------------------------- boot ---------------------------- */
 window.addEventListener('load', function () {
@@ -305,6 +309,11 @@ function openEditor(task) {
   const save = el('button', 'btn primary', creating ? 'Create' : 'Save');
   save.onclick = function () { submitEditor(task, creating, save); };
   actions.appendChild(cancel); actions.appendChild(save);
+  if (!creating && canDelete(task)) {
+    const del = el('button', 'btn danger', 'Delete');
+    del.onclick = function () { deleteTask(task, del); };
+    actions.appendChild(del);
+  }
   form.appendChild(actions);
 
   if (!creating) {
@@ -444,6 +453,19 @@ function internalAssignees(obj) {
   return String(obj[pk]).split('|')
     .map(function (s) { return s.trim().toLowerCase(); })
     .filter(function (s) { return s.indexOf('@') >= 0; }).join('|');
+}
+
+async function deleteTask(task, btn) {
+  if (!confirm('Delete this task? This cannot be undone.')) return;
+  if (btn) { btn.disabled = true; btn.textContent = 'Deleting…'; }
+  try {
+    await apiCall('deleteTask', { taskType: State.board.taskType, taskId: task.TaskID });
+    State.tasks = State.tasks.filter(function (t) { return t.TaskID !== task.TaskID; });
+    closeSheet(); persistBoardCache(); drawKanban();
+  } catch (e) {
+    toast(e.message);
+    if (btn) { btn.disabled = false; btn.textContent = 'Delete'; }
+  }
 }
 
 async function submitEditor(task, creating, btn) {

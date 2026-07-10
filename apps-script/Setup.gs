@@ -92,6 +92,23 @@ function setup_dedupeBoards() {
   return keep.length;
 }
 
+/**
+ * Keep-warm: pings this web app so the next real request doesn't cold-start.
+ * Set up a time-based trigger to run this every 5 minutes:
+ *   Apps Script editor → Triggers (clock icon) → Add Trigger →
+ *   function: setup_keepWarm, event source: Time-driven, Minutes timer, Every 5 minutes.
+ */
+function setup_keepWarm() {
+  try {
+    const url = ScriptApp.getService().getUrl();
+    if (!url) return;
+    UrlFetchApp.fetch(url, {
+      method: 'post', contentType: 'text/plain',
+      payload: '{"action":"ping"}', muteHttpExceptions: true
+    });
+  } catch (e) { /* best-effort */ }
+}
+
 /** Trim the empty padding rows/columns Google adds (default 1000x26) so every
  *  read scans only real data. Safe to run anytime; keeps a small buffer. */
 function setup_trimBlanks() {
