@@ -4,3 +4,6 @@ node_modules/
 apps-script/.clasp.json
 
 tasks/
+.playwright-mcp/
+*.jpeg
+*.png
