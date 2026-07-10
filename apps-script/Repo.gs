@@ -73,6 +73,27 @@ function getBoardConfig(taskType) {
 
 function getBoardTasks(taskType) { return readObjects_(taskType); }
 
+function getCompanies() {
+  return readObjects_('Companies')
+    .filter(function (c) { return !(c.active === false || c.active === 'FALSE'); })
+    .map(function (c) { return String(c.name); });
+}
+
+/** Append one audit-trail row. */
+function appendHistory(taskType, taskId, actorEmail, action, field, oldVal, newVal) {
+  ss_().getSheetByName('History').appendRow([
+    Utilities.getUuid(), taskType, taskId, new Date(), actorEmail, action,
+    field || '', oldVal == null ? '' : String(oldVal), newVal == null ? '' : String(newVal)
+  ]);
+}
+
+/** History rows for one task, newest first. */
+function getHistory(taskType, taskId) {
+  return readObjects_('History')
+    .filter(function (h) { return h.taskType === taskType && String(h.TaskID) === String(taskId); })
+    .sort(function (a, b) { return new Date(b.Timestamp) - new Date(a.Timestamp); });
+}
+
 function getTaskById(taskType, taskId) {
   return getBoardTasks(taskType).filter(function (t) {
     return String(t.TaskID) === String(taskId);

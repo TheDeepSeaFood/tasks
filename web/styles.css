@@ -116,6 +116,25 @@ body {
 .add-user input { flex: 1 1 140px; padding: 10px; border-radius: 8px; border: 1px solid var(--line);
   background: var(--surface); color: var(--ink); }
 
+/* company filter + tag */
+.filter-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.filter-sel { padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line);
+  background: var(--surface); color: var(--ink); font: inherit; }
+.company-tag { display: inline-block; margin-top: 6px; font-size: 11px; font-weight: 600;
+  color: var(--brand-2); background: color-mix(in srgb, var(--brand-2) 14%, transparent);
+  border-radius: 6px; padding: 2px 8px; }
+
+/* history timeline */
+.history { margin-top: 22px; border-top: 1px solid var(--line); padding-top: 14px; }
+.history h4 { margin: 0 0 10px; }
+.timeline { list-style: none; margin: 0; padding: 0; }
+.timeline li { display: flex; flex-direction: column; gap: 2px; padding: 8px 0 8px 14px;
+  border-left: 2px solid var(--line); position: relative; }
+.timeline li::before { content: ''; position: absolute; left: -5px; top: 12px; width: 8px; height: 8px;
+  border-radius: 50%; background: var(--brand-2); }
+.tl-when { font-size: 11px; color: var(--muted); }
+.tl-what { font-size: 14px; }
+
 /* toast */
 .toast { position: fixed; left: 50%; bottom: 88px; transform: translateX(-50%) translateY(20px);
   background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 10px; max-width: 88%;

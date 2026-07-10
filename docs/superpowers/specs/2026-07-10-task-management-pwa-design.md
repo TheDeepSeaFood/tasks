@@ -62,6 +62,15 @@ The tree defines visibility (see §5).
 - A "board" = a `(department, taskType)` pair. A department may have several boards
   (e.g. IT → Software Tickets, Hardware Tickets).
 
+### `Companies` (config)
+| name | active |
+Sub-companies under the group (The Deep Sea Food, Oceano, Gourmex, Royal Future, …). Editable anytime.
+
+### `History` (append-only audit trail)
+| HistoryID | taskType | TaskID | Timestamp | ActorEmail | Action | Field | OldValue | NewValue |
+Every create and every field change appends a row; nothing is overwritten. Surfaced as a timeline
+inside each ticket for full traceability.
+
 ### One tab per board (task storage)
 Each board stores its tasks in its own tab with exactly the columns from its config, plus hidden
 system columns: `TaskID` (UUID), `AssignerEmail`, `AssigneeEmail`, `CreatedAt`.

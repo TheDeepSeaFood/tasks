@@ -39,6 +39,12 @@ function route(action, payload, user) {
     case 'getBoardConfig':
       return { fields: getBoardConfig(payload.taskType) };
 
+    case 'listCompanies':
+      return { companies: getCompanies() };
+
+    case 'getHistory':
+      return { history: getHistory(payload.taskType, payload.taskId) };
+
     case 'listTasks': {
       const v = visibleContext_(user);
       const tasks = getBoardTasks(payload.taskType).filter(function (t) {
@@ -70,6 +76,8 @@ function route(action, payload, user) {
         obj.AssigneeEmail = assignee;
         obj.CreatedAt = new Date();
         appendTask(payload.taskType, obj);
+        appendHistory(payload.taskType, obj.TaskID, user.email, 'create', '', '',
+          (obj.Task || '') + (obj.Company ? ' [' + obj.Company + ']' : ''));
         return { taskId: obj.TaskID };
       } finally { lock.releaseLock(); }
     }
@@ -85,7 +93,7 @@ function route(action, payload, user) {
       if (!canDefine && !canUpdate) throw new Error('Not allowed to edit this task');
 
       const cfg = getBoardConfig(payload.taskType);
-      const isUpdateField = {};
+      const isUpdateField = { Company: false };  // Company is a global definition field
       cfg.forEach(function (f) { isUpdateField[f.fieldKey] = f.isUpdate; });
 
       const changes = payload.changes || {};
@@ -97,8 +105,13 @@ function route(action, payload, user) {
       });
 
       const lock = LockService.getScriptLock(); lock.waitLock(10000);
-      try { updateTaskFields(payload.taskType, payload.taskId, changes); return { ok: true }; }
-      finally { lock.releaseLock(); }
+      try {
+        updateTaskFields(payload.taskType, payload.taskId, changes);
+        Object.keys(changes).forEach(function (k) {
+          appendHistory(payload.taskType, payload.taskId, user.email, 'update', k, task[k], changes[k]);
+        });
+        return { ok: true };
+      } finally { lock.releaseLock(); }
     }
 
     case 'getHierarchy': {

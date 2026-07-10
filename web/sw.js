@@ -1,6 +1,6 @@
 /* App-shell service worker. Caches the static UI so the PWA opens instantly and
    offline; task DATA always goes to the network (never cached). */
-const CACHE = 'taskmgr-shell-v1';
+const CACHE = 'taskmgr-shell-v2';
 const SHELL = [
   './', './index.html', './styles.css',
   './config.js', './auth.js', './api.js', './app.js',

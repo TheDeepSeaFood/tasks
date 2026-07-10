@@ -4,6 +4,8 @@ const State = {
   me: null,          // { email, name, isAdmin, subtree: [] }
   boards: [],        // [{ department, taskType }]
   users: [],         // visible users for pickers [{email,name}]
+  companies: [],     // sub-company names
+  companyFilter: '', // '' = all
   board: null,       // { taskType, fields: [...] }
   tasks: []
 };
@@ -101,6 +103,8 @@ async function renderBoard(taskType) {
     State.board = { taskType: taskType, fields: cfg.fields };
     State.tasks = data.tasks;
     try { State.users = (await apiCall('listUsers')).users; } catch (e) { State.users = []; }
+    try { State.companies = (await apiCall('listCompanies')).companies; } catch (e) { State.companies = []; }
+    State.companyFilter = '';
     drawKanban();
   } catch (e) { main.innerHTML = '<p class="error">' + esc(e.message) + '</p>'; }
 }
@@ -123,13 +127,31 @@ function drawKanban() {
   addBtn.onclick = function () { openEditor(null); };
   main.appendChild(addBtn);
 
+  // company filter
+  if (State.companies.length) {
+    const bar = el('div', 'filter-bar');
+    bar.appendChild(el('span', 'muted small', 'Company'));
+    const sel = el('select', 'filter-sel');
+    const all = el('option'); all.value = ''; all.textContent = 'All companies'; sel.appendChild(all);
+    State.companies.forEach(function (c) {
+      const o = el('option'); o.value = c; o.textContent = c;
+      if (c === State.companyFilter) o.selected = true; sel.appendChild(o);
+    });
+    sel.onchange = function () { State.companyFilter = sel.value; drawKanban(); };
+    bar.appendChild(sel);
+    main.appendChild(bar);
+  }
+
   const sf = statusField();
   const lists = sf ? sf.options : ['All'];
   const board = el('div', 'kanban');
+  const visibleTasks = State.tasks.filter(function (t) {
+    return !State.companyFilter || String(t.Company || '') === State.companyFilter;
+  });
 
   lists.forEach(function (status) {
     const col = el('div', 'kcol');
-    const rows = State.tasks.filter(function (t) {
+    const rows = visibleTasks.filter(function (t) {
       return sf ? String(t[sf.fieldKey] || '') === status : true;
     });
     col.appendChild(el('div', 'kcol-head', esc(status) + ' <span class="count">' + rows.length + '</span>'));
@@ -150,9 +172,11 @@ function taskCard(t) {
     if (v) meta += '<span class="pill">' + esc(f.fieldKey === 'DeadlineDate' ? '⏱ ' + fmtDate(v) : v) + '</span>';
   });
   const sub = t.SubStatus ? '<span class="badge">' + esc(t.SubStatus) + '</span>' : '';
+  const company = t.Company ? '<span class="company-tag">' + esc(t.Company) + '</span>' : '';
   const prio = (t.Priority || '').toLowerCase();
   card.innerHTML =
     '<div class="card-top"><strong>' + esc(title) + '</strong>' + sub + '</div>' +
+    company +
     '<div class="card-meta">' + meta + '</div>';
   if (prio) card.classList.add('prio-' + prio);
   card.onclick = function () { openEditor(t); };
@@ -182,6 +206,23 @@ function openEditor(task) {
       const o = el('option'); o.value = u.email; o.textContent = u.name; sel.appendChild(o);
     });
     wrap.appendChild(sel); form.appendChild(wrap);
+  }
+
+  // Company — global definition field on every board
+  if (State.companies.length) {
+    const cwrap = el('label', 'fld');
+    cwrap.appendChild(el('span', 'fld-label', 'Company •'));
+    const csel = el('select');
+    const blank = el('option'); blank.value = ''; blank.textContent = '—'; csel.appendChild(blank);
+    const cur = task ? (task.Company || '') : '';
+    State.companies.forEach(function (c) {
+      const o = el('option'); o.value = c; o.textContent = c;
+      if (String(cur) === c) o.selected = true; csel.appendChild(o);
+    });
+    csel.dataset.key = 'Company';
+    csel.dataset.update = '0';
+    if (!allowDefine) csel.setAttribute('disabled', 'disabled');
+    cwrap.appendChild(csel); form.appendChild(cwrap);
   }
 
   fields.forEach(function (f) {
@@ -220,7 +261,43 @@ function openEditor(task) {
   actions.appendChild(cancel); actions.appendChild(save);
   form.appendChild(actions);
 
+  if (!creating) {
+    const hist = el('div', 'history');
+    hist.appendChild(el('h4', null, 'History'));
+    hist.appendChild(el('p', 'muted small', 'Loading…'));
+    form.appendChild(hist);
+    loadHistory(task, hist);
+  }
+
   showSheet(form);
+}
+
+async function loadHistory(task, container) {
+  try {
+    const res = await apiCall('getHistory', { taskType: State.board.taskType, taskId: task.TaskID });
+    container.innerHTML = '<h4>History</h4>';
+    if (!res.history.length) { container.appendChild(el('p', 'muted small', 'No changes logged yet.')); return; }
+    const ul = el('ul', 'timeline');
+    res.history.forEach(function (h) {
+      const who = h.ActorEmail;
+      const when = fmtDateTime(h.Timestamp);
+      let what;
+      if (h.Action === 'create') what = '<em>created</em> ' + esc(h.NewValue);
+      else what = '<strong>' + esc(h.Field) + '</strong>: ' + esc(h.OldValue || '∅') + ' → ' + esc(h.NewValue || '∅');
+      const li = el('li');
+      li.innerHTML = '<span class="tl-when">' + esc(when) + '</span>' +
+        '<span class="tl-what">' + what + '</span>' +
+        '<span class="tl-who muted small">' + esc(who) + '</span>';
+      ul.appendChild(li);
+    });
+    container.appendChild(ul);
+  } catch (e) { container.innerHTML = '<h4>History</h4><p class="error small">' + esc(e.message) + '</p>'; }
+}
+
+function fmtDateTime(v) {
+  if (!v) return '';
+  const d = new Date(v);
+  return isNaN(d) ? String(v) : d.toISOString().slice(0, 16).replace('T', ' ');
 }
 
 async function submitEditor(task, creating) {

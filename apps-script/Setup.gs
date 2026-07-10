@@ -1,20 +1,36 @@
 /**
  * One-time setup. Run these from the Apps Script editor in order:
  *   1) setup_createTabs
- *   2) setup_seedMarketingConfig
- *   3) (paste marketing rows into the Marketing tab starting at column E, row 2)
- *   4) setup_backfillMarketingSystemCols
- *   5) setup_seedAdminUser  (edit the email first)
+ *   2) setup_seedCompanies
+ *   3) setup_seedMarketingConfig
+ *   4) (paste marketing rows into the Marketing tab starting at column E, row 2)
+ *   5) setup_backfillMarketingSystemCols
+ *   6) setup_seedAdminUser  (edit the email first)
  */
 
 function setup_createTabs() {
   const ss = ss_();
   ensureSheet_(ss, 'Users',     ['email', 'name', 'active', 'superDev', 'itManagerGroup']);
   ensureSheet_(ss, 'Hierarchy', ['parentEmail', 'childEmail']);
+  ensureSheet_(ss, 'Companies', ['name', 'active']);
+  ensureSheet_(ss, 'History',   ['HistoryID', 'taskType', 'TaskID', 'Timestamp', 'ActorEmail', 'Action', 'Field', 'OldValue', 'NewValue']);
   ensureSheet_(ss, 'Boards',    ['department', 'taskType', 'fieldKey', 'label', 'fieldType', 'options', 'isUpdate', 'isStatus', 'order']);
+  // 'Company' is a global field on every board (kept last so pasted marketing rows still start at column E).
   ensureSheet_(ss, 'Marketing', ['TaskID', 'AssignerEmail', 'AssigneeEmail', 'CreatedAt',
     'Task', 'Status', 'Requirement', 'Category', 'Priority', 'AssignedTo',
-    'AssignedDate', 'DeadlineDate', 'SubStatus', 'Remarks', 'LastUpdateDate']);
+    'AssignedDate', 'DeadlineDate', 'SubStatus', 'Remarks', 'LastUpdateDate', 'Company']);
+}
+
+/** Seed the sub-companies under the group. Add more rows in the Companies tab anytime. */
+function setup_seedCompanies() {
+  const rows = [
+    ['The Deep Sea Food', true],
+    ['Oceano', true],
+    ['Gourmex', true],
+    ['Royal Future', true]
+  ];
+  const sh = ss_().getSheetByName('Companies');
+  sh.getRange(sh.getLastRow() + 1, 1, rows.length, 2).setValues(rows);
 }
 
 function ensureSheet_(ss, name, headers) {
