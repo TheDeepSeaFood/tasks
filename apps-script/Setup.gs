@@ -47,7 +47,7 @@ function setup_seedMarketingConfig() {
     ['Marketing', 'Marketing', 'Requirement',    'Requirement',     'longtext', '', false, false, 2],
     ['Marketing', 'Marketing', 'Category',       'Category',        'select',   'Offline|New Brand|Packaging-RTC', false, false, 3],
     ['Marketing', 'Marketing', 'Priority',       'Priority',        'select',   'Low|Medium|High', false, false, 4],
-    ['Marketing', 'Marketing', 'AssignedTo',     'Assigned To',     'text',     '', false, false, 5],
+    ['Marketing', 'Marketing', 'AssignedTo',     'Assigned To',     'people',   '', false, false, 5],
     ['Marketing', 'Marketing', 'AssignedDate',   'Assigned Date',   'date',     '', false, false, 6],
     ['Marketing', 'Marketing', 'DeadlineDate',   'Deadline Date',   'date',     '', false, false, 7],
     ['Marketing', 'Marketing', 'Status',         'Status',          'select',   'Delayed|In Review|Concept Progress|In Progress|OnHold|Done', true, true, 8],

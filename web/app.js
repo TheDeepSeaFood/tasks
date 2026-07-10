@@ -173,7 +173,15 @@ function taskCard(t) {
   const title = t.Task || t.Title || t.TaskID;
   let meta = '';
   summaryFields().forEach(function (f) {
-    const v = f.fieldKey === 'Task' ? '' : t[f.fieldKey];
+    if (f.fieldKey === 'Task') return;
+    if (f.fieldType === 'people') {
+      String(t[f.fieldKey] || '').split('|').filter(Boolean).forEach(function (tok) {
+        const nm = tok.indexOf('@') >= 0 ? userName(tok) : tok;
+        meta += '<span class="pill people-pill">' + esc(nm) + '</span>';
+      });
+      return;
+    }
+    const v = t[f.fieldKey];
     if (v) meta += '<span class="pill">' + esc(f.fieldKey === 'DeadlineDate' ? '⏱ ' + fmtDate(v) : v) + '</span>';
   });
   const sub = t.SubStatus ? '<span class="badge">' + esc(t.SubStatus) + '</span>' : '';
@@ -199,20 +207,6 @@ function openEditor(task) {
   form.appendChild(el('div', 'sheet-grip'));
   form.appendChild(el('h3', null, creating ? 'New ' + State.board.taskType + ' task' : 'Edit task'));
 
-  if (creating) {
-    // assignee picker (must be self or in subtree, enforced server-side)
-    const wrap = el('label', 'fld');
-    wrap.appendChild(el('span', 'fld-label', 'Owner (assignee)'));
-    const sel = el('select'); sel.id = 'f_assignee';
-    const meOpt = el('option'); meOpt.value = State.me.email; meOpt.textContent = State.me.name + ' (me)';
-    sel.appendChild(meOpt);
-    State.users.forEach(function (u) {
-      if (u.email === State.me.email) return;
-      const o = el('option'); o.value = u.email; o.textContent = u.name; sel.appendChild(o);
-    });
-    wrap.appendChild(sel); form.appendChild(wrap);
-  }
-
   // Company — global definition field on every board
   if (State.companies.length) {
     const cwrap = el('label', 'fld');
@@ -232,6 +226,12 @@ function openEditor(task) {
 
   fields.forEach(function (f) {
     const editable = f.isUpdate ? allowUpdate : allowDefine;
+
+    if (f.fieldType === 'people') {
+      form.appendChild(buildPeopleField(f, task, editable));
+      return;
+    }
+
     const wrap = el('label', 'fld');
     wrap.appendChild(el('span', 'fld-label', esc(f.label) + (f.isUpdate ? '' : ' •')));
     const val = task ? (task[f.fieldKey] != null ? task[f.fieldKey] : '') : '';
@@ -277,6 +277,72 @@ function openEditor(task) {
   showSheet(form);
 }
 
+function userName(email) {
+  const u = State.users.filter(function (x) { return x.email === email; })[0];
+  return u ? u.name : email;
+}
+
+/** Chip multi-picker: internal users (stored as email) + external names (raw text). */
+function buildPeopleField(f, task, editable) {
+  const wrap = el('label', 'fld');
+  wrap.appendChild(el('span', 'fld-label', esc(f.label) + (f.isUpdate ? '' : ' •')));
+
+  let tokens = (task && task[f.fieldKey])
+    ? String(task[f.fieldKey]).split('|').map(function (s) { return s.trim(); }).filter(Boolean)
+    : [];
+
+  const hidden = el('input'); hidden.type = 'hidden';
+  hidden.dataset.key = f.fieldKey; hidden.dataset.update = f.isUpdate ? '1' : '0';
+  hidden.disabled = !editable;
+
+  const chips = el('div', 'chips');
+  function sync() { hidden.value = tokens.join('|'); render(); }
+  function render() {
+    chips.innerHTML = '';
+    if (!tokens.length) chips.appendChild(el('span', 'muted small', 'No one assigned yet'));
+    tokens.forEach(function (tok, i) {
+      const isInt = tok.indexOf('@') >= 0;
+      const chip = el('span', 'chip-token ' + (isInt ? 'internal' : 'external'));
+      chip.appendChild(document.createTextNode(isInt ? userName(tok) : tok));
+      if (!isInt) chip.appendChild(el('span', 'chip-ext-tag', 'external'));
+      if (editable) {
+        const x = el('button', 'chip-x', '×'); x.type = 'button';
+        x.onclick = function () { tokens.splice(i, 1); sync(); };
+        chip.appendChild(x);
+      }
+      chips.appendChild(chip);
+    });
+  }
+  wrap.appendChild(chips);
+
+  if (editable) {
+    const controls = el('div', 'people-controls');
+    const sel = el('select', 'people-sel');
+    const blank = el('option'); blank.value = ''; blank.textContent = '+ Add team member'; sel.appendChild(blank);
+    State.users.forEach(function (u) {
+      const o = el('option'); o.value = u.email;
+      o.textContent = u.name + (u.email === State.me.email ? ' (me)' : '');
+      sel.appendChild(o);
+    });
+    sel.onchange = function () {
+      if (sel.value && tokens.indexOf(sel.value) < 0) { tokens.push(sel.value); sync(); }
+      sel.value = '';
+    };
+    const ext = el('input', 'people-ext'); ext.type = 'text';
+    ext.placeholder = '+ external (agency, name)…';
+    function addExt() { const val = ext.value.trim(); if (val && tokens.indexOf(val) < 0) { tokens.push(val); sync(); } ext.value = ''; }
+    ext.onkeydown = function (e) { if (e.key === 'Enter') { e.preventDefault(); addExt(); } };
+    const addBtn = el('button', 'btn ghost people-add', 'Add'); addBtn.type = 'button'; addBtn.onclick = addExt;
+    controls.appendChild(sel); controls.appendChild(ext); controls.appendChild(addBtn);
+    wrap.appendChild(controls);
+  }
+
+  wrap.appendChild(hidden);
+  hidden.value = tokens.join('|');
+  render();
+  return wrap;
+}
+
 async function loadHistory(task, container) {
   try {
     const res = await apiCall('getHistory', { taskType: State.board.taskType, taskId: task.TaskID });
@@ -311,8 +377,7 @@ async function submitEditor(task, creating) {
   inputs.forEach(function (i) { if (!i.disabled) values[i.dataset.key] = i.value; });
   try {
     if (creating) {
-      const assignee = ($('#f_assignee') || {}).value || State.me.email;
-      await apiCall('createTask', { taskType: State.board.taskType, assigneeEmail: assignee, fields: values });
+      await apiCall('createTask', { taskType: State.board.taskType, fields: values });
     } else {
       // only send changed fields
       const changes = {};

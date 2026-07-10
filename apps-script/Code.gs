@@ -22,6 +22,19 @@ function handle(e) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
+/** Internal assignee emails parsed from a people-field value (external names skipped). */
+function parseAssignees_(peopleValue) {
+  return String(peopleValue || '').split('|')
+    .map(function (s) { return s.trim().toLowerCase(); })
+    .filter(function (s) { return s.indexOf('@') >= 0; });
+}
+
+/** The fieldKey of the board's people (multi-assignee) field, or null. */
+function peopleFieldKey_(cfg) {
+  const f = cfg.filter(function (x) { return x.fieldType === 'people'; })[0];
+  return f ? f.fieldKey : null;
+}
+
 /** Builds the viewer's visible-email set + admin flag once per request. */
 function visibleContext_(user) {
   const users = getUsers();
@@ -87,14 +100,18 @@ function route(action, payload, user) {
 
     case 'createTask': {
       const v = visibleContext_(user);
-      const assignee = String(payload.assigneeEmail || user.email).toLowerCase();
-      if (!v.isAdmin && !v.set[assignee]) throw new Error('You can only assign to yourself or your team');
+      const cfg = getBoardConfig(payload.taskType);
+      const pKey = peopleFieldKey_(cfg);
+      let assignees = pKey ? parseAssignees_((payload.fields || {})[pKey]) : [user.email];
+      if (!v.isAdmin) assignees.forEach(function (a) {
+        if (!v.set[a]) throw new Error('You can only assign internal people in your team: ' + a);
+      });
       const lock = LockService.getScriptLock(); lock.waitLock(10000);
       try {
         const obj = Object.assign({}, payload.fields || {});
         obj.TaskID = Utilities.getUuid();
         obj.AssignerEmail = user.email;
-        obj.AssigneeEmail = assignee;
+        obj.AssigneeEmail = assignees.join('|');
         obj.CreatedAt = new Date();
         appendTask(payload.taskType, obj);
         appendHistory(payload.taskType, obj.TaskID, user.email, 'create', '', '',
@@ -108,12 +125,14 @@ function route(action, payload, user) {
       const task = getTaskById(payload.taskType, payload.taskId);
       if (!task) throw new Error('Task not found');
       const assigner = String(task.AssignerEmail).toLowerCase();
-      const assignee = String(task.AssigneeEmail).toLowerCase();
+      const assignees = String(task.AssigneeEmail || '').toLowerCase().split('|');
+      const anyAssigneeVisible = assignees.some(function (a) { return a && v.set[a]; });
       const canDefine = v.isAdmin || !!v.set[assigner];
-      const canUpdate = v.isAdmin || !!v.set[assignee] || !!v.set[assigner];
+      const canUpdate = v.isAdmin || anyAssigneeVisible || !!v.set[assigner];
       if (!canDefine && !canUpdate) throw new Error('Not allowed to edit this task');
 
       const cfg = getBoardConfig(payload.taskType);
+      const pKey = peopleFieldKey_(cfg);
       const isUpdateField = { Company: false };  // Company is a global definition field
       cfg.forEach(function (f) { isUpdateField[f.fieldKey] = f.isUpdate; });
 
@@ -125,9 +144,20 @@ function route(action, payload, user) {
         if (!flag && !canDefine) throw new Error('You cannot change a task assigned to you from above: ' + k);
       });
 
+      // If the people field changed, recompute the internal-assignee column.
+      let newAssigneeCol = null;
+      if (pKey && changes.hasOwnProperty(pKey)) {
+        const na = parseAssignees_(changes[pKey]);
+        if (!v.isAdmin) na.forEach(function (a) {
+          if (!v.set[a]) throw new Error('You can only assign internal people in your team: ' + a);
+        });
+        newAssigneeCol = na.join('|');
+      }
+
       const lock = LockService.getScriptLock(); lock.waitLock(10000);
       try {
         updateTaskFields(payload.taskType, payload.taskId, changes);
+        if (newAssigneeCol !== null) updateTaskFields(payload.taskType, payload.taskId, { AssigneeEmail: newAssigneeCol });
         Object.keys(changes).forEach(function (k) {
           appendHistory(payload.taskType, payload.taskId, user.email, 'update', k, task[k], changes[k]);
         });

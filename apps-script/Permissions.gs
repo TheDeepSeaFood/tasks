@@ -24,7 +24,13 @@ function visibleEmails(viewerEmail, edges, usersById) {
   return Object.keys(seen);
 }
 
-/** A task is visible if its assigner or assignee is in the viewer's visible set. */
+/** A task is visible if its assigner OR any assignee is in the viewer's set.
+ *  AssigneeEmail may hold several internal emails joined by "|". */
 function canSeeTask(task, visibleSet) {
-  return !!(visibleSet[task.AssignerEmail] || visibleSet[task.AssigneeEmail]);
+  if (visibleSet[task.AssignerEmail]) return true;
+  const list = String(task.AssigneeEmail || '').toLowerCase().split('|');
+  for (var i = 0; i < list.length; i++) {
+    if (list[i] && visibleSet[list[i]]) return true;
+  }
+  return false;
 }

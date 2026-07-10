@@ -345,6 +345,30 @@ body::after {
 .btn.primary:hover::before { left: 130%; }
 .btn.wide { width: 100%; flex: none; margin-top: 22px; }
 
+/* ---------- people chip picker ---------- */
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; min-height: 8px; }
+.chip-token {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 6px 10px; border-radius: 999px; font-size: 13px; font-weight: 600;
+  border: 1px solid var(--line);
+}
+.chip-token.internal { background: color-mix(in srgb, var(--brand-2) 14%, transparent); color: var(--brand); }
+:root[data-theme="dark"] .chip-token.internal { color: var(--brand-2); }
+.chip-token.external { background: color-mix(in srgb, var(--accent) 16%, transparent); color: #8a3d1c; border-color: color-mix(in srgb, var(--accent) 28%, transparent); }
+:root[data-theme="dark"] .chip-token.external { color: var(--accent); }
+.chip-ext-tag { font-size: 9.5px; text-transform: uppercase; letter-spacing: .06em; opacity: .7; font-weight: 700; }
+.chip-x {
+  border: 0; background: transparent; color: inherit; cursor: pointer;
+  font-size: 16px; line-height: 1; padding: 0; margin-left: 2px; opacity: .7;
+}
+.chip-x:hover { opacity: 1; }
+.people-controls { display: flex; flex-wrap: wrap; gap: 8px; }
+.people-sel { flex: 1 1 150px; }
+.people-ext { flex: 1 1 150px; }
+.people-add { flex: 0 0 auto; min-width: 72px; padding: 11px 16px; }
+.people-pill { background: color-mix(in srgb, var(--brand-2) 12%, transparent); color: var(--brand); border-color: color-mix(in srgb, var(--brand-2) 22%, transparent); font-weight: 600; }
+:root[data-theme="dark"] .people-pill { color: var(--brand-2); }
+
 /* ---------- history timeline ---------- */
 .history { margin-top: 26px; border-top: 1px solid var(--line); padding-top: 18px; }
 .history h4 { font-family: var(--display); font-weight: 600; font-size: 16px; margin: 0 0 14px; }
