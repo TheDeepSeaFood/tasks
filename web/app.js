@@ -185,7 +185,7 @@ function taskCard(t) {
   });
   const sub = t.SubStatus ? '<span class="badge">' + esc(t.SubStatus) + '</span>' : '';
   const company = t.Company ? '<span class="company-tag">' + esc(t.Company) + '</span>' : '';
-  const prio = (t.Priority || '').toLowerCase();
+  const prio = (t.Priority || '').toLowerCase().replace(/\s+/g, '-');
   card.innerHTML =
     '<div class="card-top"><strong>' + esc(title) + '</strong>' + sub + '</div>' +
     company +
