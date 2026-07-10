@@ -1,0 +1,8 @@
+- generic [ref=e3]:
+  - generic [ref=e4]: 🌊
+  - heading "Task Manager" [level=1] [ref=e5]
+  - paragraph [ref=e6]: Sign in with your work Google account.
+  - generic [ref=e8]:
+    - button "تسجيل الدخول باستخدام Googleيفتح الرابط في علامة تبويب جديدة" [ref=e10] [cursor=pointer]:
+      - generic [ref=e12]: تسجيل الدخول باستخدام Google
+    - iframe
