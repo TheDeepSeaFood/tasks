@@ -50,13 +50,21 @@ function setup_seedMarketingConfig() {
     ['Marketing', 'Marketing', 'AssignedTo',     'Assigned To',     'people',   '', false, false, 5],
     ['Marketing', 'Marketing', 'AssignedDate',   'Assigned Date',   'date',     '', false, false, 6],
     ['Marketing', 'Marketing', 'DeadlineDate',   'Deadline Date',   'date',     '', false, false, 7],
-    ['Marketing', 'Marketing', 'Status',         'Status',          'select',   'Delayed|In Review|Concept Progress|In Progress|OnHold|Done', true, true, 8],
+    ['Marketing', 'Marketing', 'Status',         'Status',          'select',   'New|Delayed|In Review|Concept Progress|In Progress|OnHold|Done', true, true, 8],
     ['Marketing', 'Marketing', 'SubStatus',      'Sub-status',      'select',   'In Progress|OnHold', true, false, 9],
     ['Marketing', 'Marketing', 'Remarks',        'Remarks',         'longtext', '', true, false, 10],
     ['Marketing', 'Marketing', 'LastUpdateDate', 'Last Update Date','date',     '', true, false, 11]
   ];
   const sh = ss_().getSheetByName('Boards');
+  // Idempotent + self-healing: drop any existing Marketing config (old field
+  // types, duplicates) before writing the canonical set.
+  const vals = sh.getDataRange().getValues();
+  const iType = vals[0].indexOf('taskType');
+  for (var i = vals.length - 1; i >= 1; i--) {
+    if (vals[i][iType] === 'Marketing') sh.deleteRow(i + 1);
+  }
   sh.getRange(sh.getLastRow() + 1, 1, rows.length, rows[0].length).setValues(rows);
+  clearTableCache_('Boards');
 }
 
 /** Remove duplicate board-config rows, keeping the first of each
