@@ -82,3 +82,46 @@ function setup_seedAdminUser() {
   const sh = ss_().getSheetByName('Users');
   sh.appendRow([ADMIN_EMAIL.toLowerCase(), 'Admin', 'Administrator', true, true, true]);
 }
+
+/**
+ * Seeds the Deep Sea Food org: users + hierarchy. Run this INSTEAD of
+ * setup_seedAdminUser (it overwrites the Users and Hierarchy tabs).
+ *
+ * !!! Set DOMAIN to your real Google Workspace domain and check every email
+ *     matches the actual account — sign-in matches emails exactly.
+ * seeAll: 'itmgr' = IT-manager group, 'dev' = super-developer, '' = normal.
+ */
+function setup_seedOrg() {
+  const DOMAIN = 'thedeepseafood.com'; // <-- CHANGE to your real Workspace domain
+
+  // [ emailLocalPart, name, designation, managerLocalPart, seeAll ]
+  const people = [
+    ['noufal',    'Noufal',    'IT Manager',                                                                              '',        'itmgr'],
+    ['mujeeb',    'Mujeeb',    'IT Hardware/Software Procurement & Support',                                              'noufal',  ''],
+    ['russel',    'Russel',    'Software Lead / Developer',                                                               'noufal',  'dev'],
+    ['abhimanue', 'Abhimanue', 'Software Tickets Coordination, Mail Sender, Website Auditing, Small Development, Vendor Coordination', 'russel', ''],
+    ['riyas',     'Riyas',     'IT Support, Hardware/Software Vendor Coordination, Integration, ERP/CRM & Software Support', 'russel', ''],
+    ['shahid',    'Shahid',    'Marketing Manager',                                                                       'noufal',  ''],
+    ['amar',      'Amar',      'Digital Marketing Coordinator',                                                           'shahid',  ''],
+    ['amal',      'Amal',      'Creative Lead',                                                                           'amar',    ''],
+    ['abdeb',     'Abdeb',     'SEO & Content Creation, Social Media Marketing',                                          'amar',    ''],
+    ['navas',     'Navas',     'Designer',                                                                                'amal',    ''],
+    ['vishnu',    'Vishnu',    'Designer',                                                                                'amal',    ''],
+    ['sharich',   'Sharich',   'Video Editor',                                                                            'amal',    '']
+  ];
+
+  const email = function (local) { return local + '@' + DOMAIN; };
+
+  const users = people.map(function (p) {
+    return {
+      email: email(p[0]), name: p[1], designation: p[2], active: true,
+      superDev: p[4] === 'dev', itManagerGroup: p[4] === 'itmgr'
+    };
+  });
+  const edges = people
+    .filter(function (p) { return p[3]; })
+    .map(function (p) { return { parentEmail: email(p[3]), childEmail: email(p[0]) }; });
+
+  writeUsers(users);
+  writeEdges(edges);
+}
