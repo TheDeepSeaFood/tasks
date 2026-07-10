@@ -57,14 +57,15 @@ body {
 body::before {
   content: ""; position: fixed; inset: -30%; z-index: -2;
   background:
-    radial-gradient(38% 42% at 18% 22%, color-mix(in srgb, var(--brand-2) 42%, transparent), transparent 60%),
-    radial-gradient(34% 38% at 82% 12%, color-mix(in srgb, var(--brand-3) 38%, transparent), transparent 62%),
-    radial-gradient(46% 46% at 70% 82%, color-mix(in srgb, var(--accent) 26%, transparent), transparent 60%),
-    radial-gradient(40% 40% at 30% 88%, color-mix(in srgb, var(--brand) 34%, transparent), transparent 62%),
+    radial-gradient(40% 44% at 16% 20%, color-mix(in srgb, var(--brand-2) var(--a1,24%), transparent), transparent 62%),
+    radial-gradient(36% 40% at 84% 10%, color-mix(in srgb, var(--brand-3) var(--a2,20%), transparent), transparent 64%),
+    radial-gradient(48% 48% at 72% 84%, color-mix(in srgb, var(--accent) var(--a3,15%), transparent), transparent 62%),
+    radial-gradient(42% 42% at 28% 90%, color-mix(in srgb, var(--brand) var(--a4,16%), transparent), transparent 64%),
     var(--bg);
-  filter: blur(10px) saturate(120%);
+  filter: blur(14px) saturate(115%);
   animation: drift 26s ease-in-out infinite alternate;
 }
+:root[data-theme="dark"] body::before { --a1: 40%; --a2: 34%; --a3: 24%; --a4: 30%; }
 /* fine grain overlay */
 body::after {
   content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none; opacity: .5;
