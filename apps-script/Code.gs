@@ -6,7 +6,14 @@ function handle(e) {
   try {
     const raw = (e && e.postData && e.postData.contents) ? e.postData.contents : '{}';
     const req = JSON.parse(raw);
-    const user = verifyIdToken(req.idToken);
+    const identity = verifyIdToken(req.idToken);
+    // Authorization = membership. Any domain is fine (incl. external users); you
+    // must be a known, active user. Admins add people in the hierarchy editor.
+    const record = getUsers()[identity.email];
+    if (!record || record.active === false) {
+      throw new Error('Not authorized — ask an admin to add your account (' + identity.email + ').');
+    }
+    const user = { email: identity.email, name: record.name || identity.name };
     out = { ok: true, data: route(req.action, req.payload || {}, user) };
   } catch (err) {
     out = { ok: false, error: String((err && err.message) || err) };
