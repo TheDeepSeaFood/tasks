@@ -213,7 +213,7 @@ body::after {
 .kanban::-webkit-scrollbar-thumb { background: var(--line); border-radius: 8px; }
 .kcol {
   flex: 0 0 85%; max-width: 340px; scroll-snap-align: start;
-  display: flex; flex-direction: column; max-height: 78vh;
+  display: flex; flex-direction: column;
   background: var(--surface); backdrop-filter: blur(14px) saturate(140%); -webkit-backdrop-filter: blur(14px) saturate(140%);
   border: 1px solid var(--line); border-radius: var(--radius);
   box-shadow: var(--shadow);
@@ -235,7 +235,7 @@ body::after {
   border-radius: 999px; padding: 2px 10px; font-size: 12px; font-weight: 700;
 }
 :root[data-theme="dark"] .count { color: var(--brand-2); }
-.kcol-body { padding: 14px; overflow-y: auto; display: flex; flex-direction: column; gap: 13px; }
+.kcol-body { padding: 14px; display: flex; flex-direction: column; gap: 13px; }
 
 .card {
   position: relative; overflow: hidden; cursor: pointer;
@@ -269,8 +269,9 @@ body::after {
   max-width: 100%; overflow-wrap: anywhere;
 }
 .badge {
+  display: inline-block; margin-top: 9px; max-width: 100%;
   background: linear-gradient(120deg, var(--gold), var(--accent)); color: #3a2400;
-  border-radius: 7px; padding: 2px 9px; font-size: 11px; font-weight: 700; white-space: nowrap;
+  border-radius: 7px; padding: 3px 9px; font-size: 11px; font-weight: 700;
   box-shadow: 0 3px 10px -3px color-mix(in srgb, var(--accent) 60%, transparent);
 }
 .company-tag {

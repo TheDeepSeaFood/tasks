@@ -198,7 +198,8 @@ function taskCard(t) {
   const company = t.Company ? '<span class="company-tag">' + esc(t.Company) + '</span>' : '';
   const prio = (t.Priority || '').toLowerCase().replace(/\s+/g, '-');
   card.innerHTML =
-    '<div class="card-top"><strong>' + esc(title) + '</strong>' + sub + '</div>' +
+    '<div class="card-top"><strong>' + esc(title) + '</strong></div>' +
+    sub +
     company +
     '<div class="card-meta">' + meta + '</div>';
   if (prio) card.classList.add('prio-' + prio);
