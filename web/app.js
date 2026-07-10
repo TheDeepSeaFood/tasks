@@ -124,9 +124,13 @@ function statusField() {
   return State.board.fields.filter(function (f) { return f.isStatus; })[0];
 }
 function summaryFields() {
-  // fields shown on the card front (skip the status + long text)
+  // fields shown on the card front (skip the status + long text); de-dupe by
+  // fieldKey so a duplicated board config can't push real fields off the card.
+  const seen = {};
   return State.board.fields.filter(function (f) {
-    return !f.isStatus && f.fieldType !== 'longtext';
+    if (f.isStatus || f.fieldType === 'longtext' || seen[f.fieldKey]) return false;
+    seen[f.fieldKey] = true;
+    return true;
   }).slice(0, 4);
 }
 
