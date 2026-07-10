@@ -133,7 +133,7 @@ function route(action, payload, user) {
       if (!v.isAdmin) throw new Error('Admins only');
       const users = Object.keys(v.users).map(function (em) {
         const u = v.users[em];
-        return { email: em, name: u.name, active: u.active, superDev: u.superDev, itManagerGroup: u.itManagerGroup };
+        return { email: em, name: u.name, designation: u.designation, active: u.active, superDev: u.superDev, itManagerGroup: u.itManagerGroup };
       });
       return { users: users, edges: getEdges() };
     }

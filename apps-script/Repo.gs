@@ -26,6 +26,7 @@ function getUsers() {
     byId[email] = {
       email: email,
       name: u.name || email,
+      designation: u.designation || '',
       active: !(u.active === false || u.active === 'FALSE'),
       superDev: toBool_(u.superDev),
       itManagerGroup: toBool_(u.itManagerGroup)
@@ -150,11 +151,13 @@ function updateTaskFields(taskType, taskId, changes) {
 function writeUsers(users) {
   const sh = ss_().getSheetByName('Users');
   sh.clearContents();
-  const headers = ['email', 'name', 'active', 'superDev', 'itManagerGroup'];
+  const headers = ['email', 'name', 'designation', 'active', 'superDev', 'itManagerGroup'];
   sh.getRange(1, 1, 1, headers.length).setValues([headers]);
-  const rows = users.map(function (u) {
-    return [String(u.email).toLowerCase(), u.name || '', u.active !== false, !!u.superDev, !!u.itManagerGroup];
-  });
+  const rows = users
+    .filter(function (u) { return u.email && String(u.email).trim() !== ''; })
+    .map(function (u) {
+      return [String(u.email).toLowerCase(), u.name || '', u.designation || '', u.active !== false, !!u.superDev, !!u.itManagerGroup];
+    });
   if (rows.length) sh.getRange(2, 1, rows.length, headers.length).setValues(rows);
 }
 

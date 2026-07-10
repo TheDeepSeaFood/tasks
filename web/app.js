@@ -356,7 +356,16 @@ async function renderHierarchy() {
   }
   H.users.forEach(function (u) {
     const row = el('div', 'tree-row');
-    row.innerHTML = '<span class="tree-name">' + esc(u.name) + ' <span class="muted small">' + esc(u.email) + '</span></span>';
+
+    const idcol = el('div', 'u-idcol');
+    const nameIn = el('input', 'u-name'); nameIn.type = 'text'; nameIn.value = u.name || '';
+    nameIn.placeholder = 'name'; nameIn.oninput = function () { u.name = nameIn.value; };
+    const desigIn = el('input', 'u-desig'); desigIn.type = 'text'; desigIn.value = u.designation || '';
+    desigIn.placeholder = 'designation'; desigIn.oninput = function () { u.designation = desigIn.value; };
+    idcol.appendChild(nameIn);
+    idcol.appendChild(desigIn);
+    idcol.appendChild(el('span', 'muted small', esc(u.email)));
+    row.appendChild(idcol);
 
     const sel = el('select', 'mgr-sel');
     const none = el('option'); none.value = ''; none.textContent = '— top level —'; sel.appendChild(none);
@@ -377,6 +386,15 @@ async function renderHierarchy() {
     seeAll.appendChild(cb); seeAll.appendChild(document.createTextNode(' see all'));
     row.appendChild(seeAll);
 
+    const del = el('button', 'icon-btn danger', '🗑');
+    del.title = 'Remove user';
+    del.onclick = function () {
+      H.users = H.users.filter(function (x) { return x.email !== u.email; });
+      H.edges = H.edges.filter(function (x) { return x.childEmail !== u.email && x.parentEmail !== u.email; });
+      renderHierarchyFrom(H);
+    };
+    row.appendChild(del);
+
     tree.appendChild(row);
   });
   main.appendChild(tree);
@@ -385,12 +403,16 @@ async function renderHierarchy() {
   const add = el('div', 'add-user');
   add.innerHTML =
     '<input id="nu_email" type="email" placeholder="new user email">' +
-    '<input id="nu_name" type="text" placeholder="name">';
+    '<input id="nu_name" type="text" placeholder="name">' +
+    '<input id="nu_desig" type="text" placeholder="designation">';
   const addBtn = el('button', 'btn', 'Add user');
   addBtn.onclick = function () {
-    const em = $('#nu_email').value.trim().toLowerCase(), nm = $('#nu_name').value.trim();
+    const em = $('#nu_email').value.trim().toLowerCase(),
+          nm = $('#nu_name').value.trim(),
+          dg = $('#nu_desig').value.trim();
     if (!em) return;
-    H.users.push({ email: em, name: nm || em, active: true, superDev: false, itManagerGroup: false });
+    if (H.users.some(function (x) { return x.email === em; })) { toast('That email already exists'); return; }
+    H.users.push({ email: em, name: nm || em, designation: dg, active: true, superDev: false, itManagerGroup: false });
     renderHierarchyFrom(H);
   };
   add.appendChild(addBtn); main.appendChild(add);

@@ -110,6 +110,11 @@ body {
 .tree-row { background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
   padding: 10px 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .tree-name { flex: 1 1 160px; font-weight: 600; }
+.u-idcol { flex: 1 1 180px; display: flex; flex-direction: column; gap: 4px; }
+.u-name, .u-desig { padding: 7px 9px; border-radius: 8px; border: 1px solid var(--line);
+  background: var(--bg); color: var(--ink); font: inherit; }
+.u-name { font-weight: 600; }
+.u-desig { font-size: 13px; }
 .mgr-sel { padding: 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
 .chk { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 4px; }
 .add-user { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }

@@ -10,7 +10,7 @@
 
 function setup_createTabs() {
   const ss = ss_();
-  ensureSheet_(ss, 'Users',     ['email', 'name', 'active', 'superDev', 'itManagerGroup']);
+  ensureSheet_(ss, 'Users',     ['email', 'name', 'designation', 'active', 'superDev', 'itManagerGroup']);
   ensureSheet_(ss, 'Hierarchy', ['parentEmail', 'childEmail']);
   ensureSheet_(ss, 'Companies', ['name', 'active']);
   ensureSheet_(ss, 'History',   ['HistoryID', 'taskType', 'TaskID', 'Timestamp', 'ActorEmail', 'Action', 'Field', 'OldValue', 'NewValue']);
@@ -80,5 +80,5 @@ function setup_backfillMarketingSystemCols() {
 function setup_seedAdminUser() {
   const ADMIN_EMAIL = 'REPLACE_WITH_YOUR_EMAIL'; // e.g. developer / IT manager
   const sh = ss_().getSheetByName('Users');
-  sh.appendRow([ADMIN_EMAIL.toLowerCase(), 'Admin', true, true, true]);
+  sh.appendRow([ADMIN_EMAIL.toLowerCase(), 'Admin', 'Administrator', true, true, true]);
 }
