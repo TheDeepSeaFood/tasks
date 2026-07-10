@@ -43,17 +43,34 @@ window.addEventListener('load', function () {
   initAuth(onSignedIn);
 });
 
+function cacheSet(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) { /* quota/private */ } }
+function cacheGet(key) { try { const s = localStorage.getItem(key); return s ? JSON.parse(s) : null; } catch (e) { return null; } }
+
+let _routeBound = false;
+function applyBootstrap(b) {
+  State.me = b.me;
+  State.boards = b.boards;
+  $('#user-chip').textContent = State.me.name + (State.me.isAdmin ? ' • admin' : '');
+}
+function showAppShell() {
+  $('#signin-view').classList.add('hidden');
+  $('#app-view').classList.remove('hidden');
+  if (!_routeBound) { window.addEventListener('hashchange', routeChanged); _routeBound = true; }
+}
+
 async function onSignedIn() {
+  // Instant boot from the last session, if we have it…
+  const cached = cacheGet('bootstrap');
+  if (cached) { applyBootstrap(cached); showAppShell(); routeChanged(); }
+
+  // …then verify/refresh identity + boards in the background.
   try {
     const b = await apiCall('bootstrap');   // identity + boards in one round-trip
-    State.me = b.me;
-    State.boards = b.boards;
-    $('#signin-view').classList.add('hidden');
-    $('#app-view').classList.remove('hidden');
-    $('#user-chip').textContent = State.me.name + (State.me.isAdmin ? ' • admin' : '');
-    window.addEventListener('hashchange', routeChanged);
-    routeChanged();
+    cacheSet('bootstrap', b);
+    applyBootstrap(b);
+    if (!cached) { showAppShell(); routeChanged(); }
   } catch (e) {
+    if (cached) return;   // token worked before; keep the cached app rather than bouncing out
     // A restored token was rejected (expired/invalid) — reset to a clean sign-in.
     clearAuth();
     $('#app-view').classList.add('hidden');
