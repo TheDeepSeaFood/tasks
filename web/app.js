@@ -273,7 +273,7 @@ function openEditor(task) {
   const actions = el('div', 'sheet-actions');
   const cancel = el('button', 'btn ghost', 'Cancel'); cancel.onclick = closeSheet;
   const save = el('button', 'btn primary', creating ? 'Create' : 'Save');
-  save.onclick = function () { submitEditor(task, creating); };
+  save.onclick = function () { submitEditor(task, creating, save); };
   actions.appendChild(cancel); actions.appendChild(save);
   form.appendChild(actions);
 
@@ -402,28 +402,55 @@ function fmtDateTime(v) {
   return isNaN(d) ? String(v) : d.toISOString().slice(0, 16).replace('T', ' ');
 }
 
-async function submitEditor(task, creating) {
+/** fieldKey of this board's people field, or null. */
+function peopleKey() {
+  const f = (State.board.fields || []).filter(function (x) { return x.fieldType === 'people'; })[0];
+  return f ? f.fieldKey : null;
+}
+/** Internal-assignee emails (tokens with '@') from a people-field value, joined by '|'. */
+function internalAssignees(obj) {
+  const pk = peopleKey();
+  if (!pk || obj[pk] == null) return '';
+  return String(obj[pk]).split('|')
+    .map(function (s) { return s.trim().toLowerCase(); })
+    .filter(function (s) { return s.indexOf('@') >= 0; }).join('|');
+}
+
+async function submitEditor(task, creating, btn) {
+  if (btn && btn.disabled) return;              // guard against double-submit
+  if (btn) { btn.disabled = true; btn.dataset.label = btn.textContent; btn.textContent = 'Saving…'; }
   const inputs = $$('.sheet [data-key]');
   const values = {};
   inputs.forEach(function (i) { if (!i.disabled) values[i.dataset.key] = i.value; });
   try {
     if (creating) {
-      await apiCall('createTask', { taskType: State.board.taskType, fields: values });
+      const res = await apiCall('createTask', { taskType: State.board.taskType, fields: values });
+      // Update the board locally instead of re-fetching everything.
+      const t = Object.assign({}, values);
+      t.TaskID = res.taskId;
+      t.AssignerEmail = State.me.email;
+      t.AssigneeEmail = internalAssignees(values);
+      State.tasks.push(t);
     } else {
       // only send changed fields
       const changes = {};
       inputs.forEach(function (i) {
         if (i.disabled) return;
         const orig = task[i.dataset.key] != null ? String(task[i.dataset.key]) : '';
-        const now = i.type === 'date' ? i.value : i.value;
-        if (i.type === 'date' ? fmtDate(orig) !== now : orig !== now) changes[i.dataset.key] = i.value;
+        if (i.type === 'date' ? fmtDate(orig) !== i.value : orig !== i.value) changes[i.dataset.key] = i.value;
       });
       if (Object.keys(changes).length === 0) { closeSheet(); return; }
       await apiCall('updateTask', { taskType: State.board.taskType, taskId: task.TaskID, changes: changes });
+      Object.assign(task, changes);
+      const pk = peopleKey();
+      if (pk && changes[pk] != null) task.AssigneeEmail = internalAssignees(changes);
     }
     closeSheet();
-    renderBoard(State.board.taskType);
-  } catch (e) { toast(e.message); }
+    drawKanban();
+  } catch (e) {
+    toast(e.message);
+    if (btn) { btn.disabled = false; btn.textContent = btn.dataset.label || 'Save'; }
+  }
 }
 
 function $$(sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); }
