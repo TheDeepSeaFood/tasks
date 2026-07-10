@@ -49,7 +49,14 @@ async function onSignedIn() {
     $('#user-chip').textContent = State.me.name + (State.me.isAdmin ? ' • admin' : '');
     window.addEventListener('hashchange', routeChanged);
     routeChanged();
-  } catch (e) { toast('Sign-in failed: ' + e.message); }
+  } catch (e) {
+    // A restored token was rejected (expired/invalid) — reset to a clean sign-in.
+    clearAuth();
+    $('#app-view').classList.add('hidden');
+    $('#signin-view').classList.remove('hidden');
+    google.accounts.id.prompt();
+    toast('Please sign in again.');
+  }
 }
 
 /* --------------------------- routing --------------------------- */
