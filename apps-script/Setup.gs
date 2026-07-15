@@ -856,3 +856,73 @@ function setup_ensureCompany_(name) {
   sh.appendRow([name, true]);
   clearTableCache_('Companies');
 }
+
+/**
+ * Seeds the real Oceano marketing tasks (from digital marketing.xlsx) AS AMAR,
+ * the digital-marketing coordinator. Company = Oceano. Internal names are mapped
+ * to user emails (drives visibility/updates); agencies stay as external labels.
+ * Idempotent: clears existing Marketing data rows first, then reseeds + logs history.
+ * Edit DOMAIN if your Workspace domain differs.
+ */
+function setup_seedMarketingTasks() {
+  const DOMAIN = 'thedeepseafood.com';
+  const ASSIGNER = 'amar@' + DOMAIN;
+  const COMPANY = 'Oceano';
+  const nameMap = {
+    amal:'amal', navas:'navas', vishnu:'vishnu', sharikh:'sharich', sharich:'sharich',
+    amar:'amar', abdeb:'abdeb', abedhab:'abdeb', abedhad:'abdeb',
+    noufal:'noufal', mujeeb:'mujeeb', russel:'russel', abhimanue:'abhimanue', riyas:'riyas', shahid:'shahid'
+  };
+  function resolvePeople(raw) {
+    return String(raw || '').split(String.fromCharCode(10)).join(',').split(',').map(function (p) { return p.trim(); }).filter(Boolean)
+      .map(function (p) { const k = p.toLowerCase(); return nameMap[k] ? nameMap[k] + '@' + DOMAIN : p; });
+  }
+
+  const data = [
+    { Task:"Vehicle Branding", Requirement:"Hiace vehicle sticker has faded and they need a revised version that includes all the newly added SKUs.", Category:"Offline", Priority:"Medium", AssignedTo:"Outsourcing", AssignedDate:"2026-04-16", DeadlineDate:"", Status:"Delayed", SubStatus:"OnHold", Remarks:"Taken quotation from agencies & submitted, It's currently on hold. Upto next renewal time (2027 Jan)", LastUpdateDate:"2026-07-04" },
+    { Task:"Second Branding Name", Requirement:"They required a 2nd brand name that will have 'N' numbers of product category", Category:"New Brand", Priority:"Medium", AssignedTo:"Agency (Innox future)", AssignedDate:"2026-05-13", DeadlineDate:"", Status:"In Review", SubStatus:"In Progress", Remarks:"Initially we given 9 options derived by Abedhad, that was not ok\nfor oceano. We outsouced it. Parallelly i takenotes from agencies\nfor complete branding.", LastUpdateDate:"2026-07-07" },
+    { Task:"Burger Sleeve", Requirement:"Oceano require a burger sleeve design with the same shape and dimensions as the Cooked Shrimp 300g sleeve.", Category:"Packaging-RTC", Priority:"Medium", AssignedTo:"Amal", AssignedDate:"2026-06-06", DeadlineDate:"2026-07-13", Status:"Concept Progress", SubStatus:"", Remarks:"Status note: Oceano will update the\nPrint format & revert.\nLast option shared with oceano", LastUpdateDate:"2026-07-07" },
+    { Task:"Hamour Sleeve", Requirement:"Adaptation of Hamour Fillet -  product img to be changed rest all the contents remain same", Category:"Packaging-RTC", Priority:"High", AssignedTo:"Navas", AssignedDate:"2026-06-13", DeadlineDate:"2026-07-13", Status:"In Progress", SubStatus:"", Remarks:"We shared the options as per the oceano requirement", LastUpdateDate:"2026-07-02" },
+    { Task:"Bus Ads", Requirement:"Marketing Team suggested the campaign to oceano.\n1 (One) Ajman to Dubai Bus and 5 Taxi's Branding slot for the month of September on the Ajman–Dubai route. \n Digital Screens  - 3 screens total - 2 screen @ lulu junction, 1 Screen at Univeristy street @ Ajman for one month (30 days).", Category:"Offline", Priority:"Medium", AssignedTo:"Agency  (Bangalore team)\nAmal", AssignedDate:"2026-05-19", DeadlineDate:"2026-07-27", Status:"In Progress", SubStatus:"In Progress", Remarks:"We outsourced initially with an agency called Elevage. That didn't work well. \nAfter we associate with a bangalore base agency, they submit options and oceano was ok to proceed this options.\nBut edits were there.Now the Bus Ad time extends, we are waiting for bangalore agency to share new option, \nThat will be submitted before July 15th.", LastUpdateDate:"2026-07-03" },
+    { Task:"1+1 Smoked Salmon", Requirement:"Oceano 1+1 Smoked Salmon is not attention-grabbing, due to which comparatively we have lesser sales. \nThe attention does not go to Oceano 1+1, so kindly, keeping the premium factor in mind, update/Redesign on how we can make the Oceano 1+1 Smoked Salmon more eye-catching.", Category:"Print", Priority:"Medium", AssignedTo:"Amal", AssignedDate:"2026-06-17", DeadlineDate:"", Status:"OnHold", SubStatus:"", Remarks:"", LastUpdateDate:"" },
+    { Task:"Website Content Validation", Requirement:"Oceano required to change the currect content to better fluentcy.", Category:"Website", Priority:"High", AssignedTo:"Abedhab - Agency in kochi", AssignedDate:"", DeadlineDate:"2026-07-07", Status:"Done", SubStatus:"", Remarks:"We have done multiple options taken through agency and internally. Last agency option\nis approved by Mr. Noufal. The revised option shared.", LastUpdateDate:"2026-07-07" },
+    { Task:"Social Media (Posters)", Requirement:"", Category:"Social Media", Priority:"", AssignedTo:"", AssignedDate:"", DeadlineDate:"", Status:"In Progress", SubStatus:"", Remarks:"", LastUpdateDate:"" },
+    { Task:"Grandiose Smoked Salmon", Requirement:"Oceano will be proceeding with the private labeling of Grandiose Smoked Salmon products. Accordingly, we require the back side content for the smoked salmon pouches", Category:"Print", Priority:"", AssignedTo:"Navas", AssignedDate:"2026-06-27", DeadlineDate:"2026-07-08", Status:"OnHold", SubStatus:"", Remarks:"We have done the requirement. Edits given. Need to share ASAP", LastUpdateDate:"2026-07-07" },
+    { Task:"Keeta Launch", Requirement:"They didn't mention any requirement, only update to us that,  \nwill be launching our online restaurant delivery service on the Keeta platform on Friday, 17th July.", Category:"", Priority:"Medium", AssignedTo:"", AssignedDate:"2026-07-01", DeadlineDate:"2026-07-17", Status:"In Progress", SubStatus:"", Remarks:"They give us the permission to do activities, but inform the before conducting anything.", LastUpdateDate:"2026-07-07" },
+    { Task:"New Product Launch - Photos & Videos", Requirement:"Their  marination items and cleaned and cut items are all set and will be pushed to the market shortly\nThey required the same is reflected in social media as launching video like how they have been doing for our launching video for other products.", Category:"Launch", Priority:"High", AssignedTo:"Sharikh", AssignedDate:"2026-06-26", DeadlineDate:"", Status:"In Progress", SubStatus:"", Remarks:"This we need to take product shoot & website photos to proceed. Sharikh is helpless to \nedit with stock footages.", LastUpdateDate:"2026-07-06" },
+    { Task:"Tobiko sticker", Requirement:"They design is over, issue facing while printing. \nNeed to rework this.", Category:"Packaging", Priority:"Medium", AssignedTo:"Amal", AssignedDate:"2026-01-01", DeadlineDate:"", Status:"OnHold", SubStatus:"OnHold", Remarks:"Need to consult with agency.", LastUpdateDate:"" },
+    { Task:"ONLINE Platforms - Careem, Noon & Amazon", Requirement:"Currently we are not doing any promotions", Category:"Digital", Priority:"High", AssignedTo:"Abedhab", AssignedDate:"2026-01-01", DeadlineDate:"", Status:"In Progress", SubStatus:"In Progress", Remarks:"Because off season, campaigns hold for amazon. Noon we are following up. Craeem need to take decision.", LastUpdateDate:"2026-07-06" },
+    { Task:"Ai Images - for Kibsons", Requirement:"Remaining products", Category:"Digital", Priority:"High", AssignedTo:"Amal", AssignedDate:"", DeadlineDate:"2026-07-10", Status:"In Progress", SubStatus:"", Remarks:"", LastUpdateDate:"" },
+    { Task:"1. OceanoXDeep - PPT\n2. Oceano PPT\nImage changes", Requirement:"All products (other than sushi range)- img to be changed\nMarination items corrections which is marked in the group \nto be corrected", Category:"Digital", Priority:"Medium", AssignedTo:"Amal", AssignedDate:"2026-07-09", DeadlineDate:"2026-07-14", Status:"In Progress", SubStatus:"", Remarks:"", LastUpdateDate:"" },
+    { Task:"Sushi img with bg from website", Requirement:"Incase if we have any other images with the bg like this from \nthe shoot kindly share that as well", Category:"", Priority:"High", AssignedTo:"Amar", AssignedDate:"2026-07-09", DeadlineDate:"2026-07-09", Status:"Done", SubStatus:"", Remarks:"Shared the file.", LastUpdateDate:"2026-07-09" },
+    { Task:"C4 Marinated Sleeves:", Requirement:"1. barcode below the netweight\n2. address to be changed to: THE DEEP SEAFOOD \nFACTORY LLC - in english and in arabic\n3. Net weight - weight variation to be added +- 20gm", Category:"", Priority:"High", AssignedTo:"Amal", AssignedDate:"2026-07-09", DeadlineDate:"2026-07-09", Status:"In Progress", SubStatus:"In Progress", Remarks:"", LastUpdateDate:"" },
+    { Task:"Wet wipes", Requirement:"Regarding the wet wipes\nthis is what purchasing team as provided us kindly suggest \nus the closest/similar shade for to proceed with bulk printing\nwe can mix and match green and golden from the options provided", Category:"", Priority:"High", AssignedTo:"Amal", AssignedDate:"2026-07-09", DeadlineDate:"2026-07-10", Status:"In Progress", SubStatus:"", Remarks:"", LastUpdateDate:"" }
+  ];
+
+  const sh = ss_().getSheetByName('Marketing');
+  const headers = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+  if (sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, headers.length).clearContent();
+
+  const now = new Date();
+  const ids = [];
+  const rows = data.map(function (d) {
+    const tokens = resolvePeople(d.AssignedTo);
+    const assignees = tokens.filter(function (t) { return t.indexOf('@') >= 0; });
+    const id = Utilities.getUuid(); ids.push(id);
+    const obj = {
+      TaskID: id, AssignerEmail: ASSIGNER, AssigneeEmail: assignees.join('|'),
+      CreatedAt: now, Company: COMPANY,
+      Task: d.Task, Status: d.Status, Requirement: d.Requirement, Category: d.Category,
+      Priority: d.Priority, AssignedTo: tokens.join('|'),
+      AssignedDate: d.AssignedDate, DeadlineDate: d.DeadlineDate, SubStatus: d.SubStatus,
+      Remarks: d.Remarks, LastUpdateDate: d.LastUpdateDate
+    };
+    return headers.map(function (h) { return obj.hasOwnProperty(h) ? obj[h] : ''; });
+  });
+  sh.getRange(2, 1, rows.length, headers.length).setValues(rows);
+
+  data.forEach(function (d, i) {
+    appendHistory('Marketing', ids[i], ASSIGNER, 'create', '', '', d.Task + ' [' + COMPANY + ']');
+  });
+  clearBoardTasksCache_('Marketing');
+}
