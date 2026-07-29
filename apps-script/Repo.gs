@@ -120,12 +120,30 @@ function writeCompanies(list) {
   clearTableCache_('Companies');
 }
 
-/** Append one audit-trail row. */
+/** Append one audit-trail row; returns the created row object. */
 function appendHistory(taskType, taskId, actorEmail, action, field, oldVal, newVal) {
-  ss_().getSheetByName('History').appendRow([
-    Utilities.getUuid(), taskType, taskId, new Date(), actorEmail, action,
-    field || '', oldVal == null ? '' : String(oldVal), newVal == null ? '' : String(newVal)
-  ]);
+  const id = Utilities.getUuid();
+  const ts = new Date();
+  const ov = oldVal == null ? '' : String(oldVal);
+  const nv = newVal == null ? '' : String(newVal);
+  ss_().getSheetByName('History').appendRow([id, taskType, taskId, ts, actorEmail, action, field || '', ov, nv]);
+  return { HistoryID: id, taskType: taskType, TaskID: taskId, Timestamp: ts, ActorEmail: actorEmail,
+           Action: action, Field: field || '', OldValue: ov, NewValue: nv };
+}
+
+/** One history row by id, or undefined. */
+function getHistoryById(historyId) {
+  return readObjects_('History').filter(function (h) { return String(h.HistoryID) === String(historyId); })[0];
+}
+
+/** Delete one history row by id. */
+function deleteHistoryRow(historyId) {
+  const sh = ss_().getSheetByName('History');
+  const values = sh.getDataRange().getValues();
+  const idCol = values[0].indexOf('HistoryID');
+  for (var i = values.length - 1; i >= 1; i--) {
+    if (String(values[i][idCol]) === String(historyId)) { sh.deleteRow(i + 1); return; }
+  }
 }
 
 /** History rows for one task, newest first. */

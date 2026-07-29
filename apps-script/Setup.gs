@@ -18,7 +18,8 @@ function setup_createTabs() {
   // 'Company' is a global field on every board (kept last so pasted marketing rows still start at column E).
   ensureSheet_(ss, 'Marketing', ['TaskID', 'AssignerEmail', 'AssigneeEmail', 'CreatedAt',
     'Task', 'Status', 'Requirement', 'Category', 'Priority', 'AssignedTo',
-    'AssignedDate', 'DeadlineDate', 'SubStatus', 'Remarks', 'LastUpdateDate', 'Company']);
+    'AssignedDate', 'DeadlineDate', 'SubStatus', 'Remarks', 'LastUpdateDate', 'Company',
+    'Progress', 'Weight', 'Type']);
 }
 
 /** Seed the sub-companies under the group. Add more rows in the Companies tab anytime. */
@@ -45,15 +46,18 @@ function setup_seedMarketingConfig() {
     // department, taskType, fieldKey, label, fieldType, options, isUpdate, isStatus, order
     ['Marketing', 'Marketing', 'Task',           'Task',            'text',     '', false, false, 1],
     ['Marketing', 'Marketing', 'Requirement',    'Requirement',     'longtext', '', false, false, 2],
-    ['Marketing', 'Marketing', 'Category',       'Category',        'select',   'Offline|New Brand|Packaging-RTC', false, false, 3],
-    ['Marketing', 'Marketing', 'Priority',       'Priority',        'select',   'Low|Medium|High', false, false, 4],
-    ['Marketing', 'Marketing', 'AssignedTo',     'Assigned To',     'people',   '', false, false, 5],
-    ['Marketing', 'Marketing', 'AssignedDate',   'Assigned Date',   'date',     '', false, false, 6],
-    ['Marketing', 'Marketing', 'DeadlineDate',   'Deadline Date',   'date',     '', false, false, 7],
-    ['Marketing', 'Marketing', 'Status',         'Status',          'select',   'New|Delayed|In Review|Concept Progress|In Progress|OnHold|Done', true, true, 8],
-    ['Marketing', 'Marketing', 'SubStatus',      'Sub-status',      'select',   'In Progress|OnHold', true, false, 9],
-    ['Marketing', 'Marketing', 'Remarks',        'Remarks',         'longtext', '', true, false, 10],
-    ['Marketing', 'Marketing', 'LastUpdateDate', 'Last Update Date','date',     '', true, false, 11]
+    ['Marketing', 'Marketing', 'Category',       'Category',        'select',   'Offline|New Brand|Packaging-RTC|Print|Digital|Social Media|Website|Launch|Packaging', false, false, 3],
+    ['Marketing', 'Marketing', 'Type',           'Type',            'select',   'Deadline|Recurring|Plan', false, false, 4],
+    ['Marketing', 'Marketing', 'Priority',       'Priority',        'select',   'Low|Medium|High', false, false, 5],
+    ['Marketing', 'Marketing', 'Weight',         'Weight',          'number',   '', false, false, 6],
+    ['Marketing', 'Marketing', 'AssignedTo',     'Assigned To',     'people',   '', false, false, 7],
+    ['Marketing', 'Marketing', 'AssignedDate',   'Assigned Date',   'date',     '', false, false, 8],
+    ['Marketing', 'Marketing', 'DeadlineDate',   'Deadline Date',   'date',     '', false, false, 9],
+    ['Marketing', 'Marketing', 'Status',         'Status',          'select',   'New|Delayed|In Review|Concept Progress|In Progress|OnHold|Done', true, true, 10],
+    ['Marketing', 'Marketing', 'Progress',       'Progress',        'range',    '', true, false, 11],
+    ['Marketing', 'Marketing', 'SubStatus',      'Sub-status',      'select',   'In Progress|OnHold', true, false, 12],
+    ['Marketing', 'Marketing', 'Remarks',        'Remarks',         'longtext', '', true, false, 13],
+    ['Marketing', 'Marketing', 'LastUpdateDate', 'Last Update Date','date',     '', true, false, 14]
   ];
   const sh = ss_().getSheetByName('Boards');
   // Idempotent + self-healing: drop any existing Marketing config (old field

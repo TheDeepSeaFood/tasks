@@ -212,6 +212,31 @@ function route(action, payload, user) {
       } finally { lock.releaseLock(); }
     }
 
+    case 'postUpdate': {
+      const v = visibleContext_(user);
+      const task = getTaskById(payload.taskType, payload.taskId);
+      if (!task) throw new Error('Task not found');
+      const assigner = String(task.AssignerEmail).toLowerCase();
+      const assignees = String(task.AssigneeEmail || '').toLowerCase().split('|');
+      const canPost = v.isAdmin || !!v.set[assigner] || assignees.some(function (a) { return a && v.set[a]; });
+      if (!canPost) throw new Error('Not allowed to update this task');
+      const text = String(payload.text || '').trim();
+      if (!text) throw new Error('Empty update');
+      const note = appendHistory(payload.taskType, payload.taskId, user.email, 'note', '', '', text);
+      return { note: note };
+    }
+
+    case 'deleteUpdate': {
+      const v = visibleContext_(user);
+      const h = getHistoryById(payload.historyId);
+      if (!h) throw new Error('Update not found');
+      if (!v.isAdmin && String(h.ActorEmail).toLowerCase() !== user.email.toLowerCase()) {
+        throw new Error('You can only delete your own updates');
+      }
+      deleteHistoryRow(payload.historyId);
+      return { ok: true };
+    }
+
     case 'getHierarchy': {
       const v = visibleContext_(user);
       if (!v.isAdmin) throw new Error('Admins only');

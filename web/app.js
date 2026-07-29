@@ -6,6 +6,10 @@ const State = {
   users: [],         // visible users for pickers [{email,name}]
   companies: [],     // sub-company names
   companyFilter: '', // '' = all
+  statusFilter: '',  // '' = all
+  personFilter: '',  // '' = all (email)
+  search: '',        // text search
+  view: null,        // 'list' | 'board' (null = auto by screen)
   board: null,       // { taskType, fields: [...] }
   tasks: []
 };
@@ -185,6 +189,161 @@ function summaryFields() {
   }).slice(0, 4);
 }
 
+function statusFieldKey() { const sf = statusField(); return sf ? sf.fieldKey : 'Status'; }
+
+function statusColor(s) {
+  switch (String(s)) {
+    case 'Done': return 'var(--ok, #2a9d6b)';
+    case 'In Progress': return 'var(--gold, #d99a2b)';
+    case 'Delayed': return 'var(--danger, #d9534f)';
+    case 'OnHold': return 'var(--danger, #d9534f)';
+    case 'In Review': return 'var(--brand-2, #2b8a9d)';
+    case 'Concept Progress': return 'var(--brand-3, #5aa9bd)';
+    default: return 'var(--muted, #8aa)';
+  }
+}
+
+/* ------------- view + filters ------------- */
+function currentView() {
+  if (State.view === 'list' || State.view === 'board') return State.view;
+  const saved = cacheGet('view');
+  State.view = (saved === 'list' || saved === 'board')
+    ? saved
+    : (window.matchMedia('(max-width: 760px)').matches ? 'list' : 'board');
+  return State.view;
+}
+function setView(v) { State.view = v; cacheSet('view', v); drawKanban(); }
+
+function filteredTasks() {
+  const q = (State.search || '').toLowerCase();
+  const pk = peopleKey();
+  const sfk = statusFieldKey();
+  return State.tasks.filter(function (t) {
+    if (State.companyFilter && String(t.Company || '') !== State.companyFilter) return false;
+    if (State.statusFilter && String(t[sfk] || '') !== State.statusFilter) return false;
+    if (State.personFilter) {
+      if (String(t[pk] || '').toLowerCase().indexOf(State.personFilter.toLowerCase()) < 0) return false;
+    }
+    if (q) {
+      const hay = (String(t.Task || '') + ' ' + String(t.Requirement || '') + ' ' + String(t.Remarks || '')).toLowerCase();
+      if (hay.indexOf(q) < 0) return false;
+    }
+    return true;
+  });
+}
+
+/* ------------- avatars ------------- */
+const AV_COLORS = ['#0A6E7C', '#C8911A', '#2a9d6b', '#7c6bd6', '#d99a2b', '#d9534f', '#2b8a9d', '#5b6bd6'];
+function avatarColor(name) {
+  let h = 0; const s = String(name || '?');
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return AV_COLORS[h % AV_COLORS.length];
+}
+function initials(name) {
+  const s = String(name || '?').replace(/[^A-Za-z0-9 ]/g, '').trim();
+  return (s.slice(0, 2) || '?').toUpperCase();
+}
+function assigneeAvatars(t, max) {
+  const pk = peopleKey();
+  const toks = String(t[pk] || '').split('|').map(function (x) { return x.trim(); }).filter(Boolean);
+  let html = toks.slice(0, max || 3).map(function (tok) {
+    const nm = tok.indexOf('@') >= 0 ? userName(tok) : tok;
+    return '<span class="av stack" title="' + esc(nm) + '" style="background:' + avatarColor(nm) + '">' + esc(initials(nm)) + '</span>';
+  }).join('');
+  if (toks.length > (max || 3)) html += '<span class="av stack more">+' + (toks.length - (max || 3)) + '</span>';
+  return html;
+}
+
+/* ------------- controls + stats ------------- */
+function buildControls() {
+  const bar = el('div', 'controls');
+
+  const search = el('input', 'ctl-search'); search.type = 'text';
+  search.placeholder = 'Search tasks…'; search.value = State.search;
+  search.oninput = function () { State.search = search.value; redrawBody(); };
+  bar.appendChild(search);
+
+  if (State.companies.length) {
+    const cs = el('select', 'ctl-sel');
+    cs.appendChild(opt('', 'All companies', State.companyFilter));
+    State.companies.forEach(function (c) { cs.appendChild(opt(c, c, State.companyFilter)); });
+    cs.onchange = function () { State.companyFilter = cs.value; drawKanban(); };
+    bar.appendChild(cs);
+  }
+
+  const sf = statusField();
+  if (sf) {
+    const ss = el('select', 'ctl-sel');
+    ss.appendChild(opt('', 'All statuses', State.statusFilter));
+    sf.options.forEach(function (o) { ss.appendChild(opt(o, o, State.statusFilter)); });
+    ss.onchange = function () { State.statusFilter = ss.value; drawKanban(); };
+    bar.appendChild(ss);
+  }
+
+  if (State.users.length) {
+    const ps = el('select', 'ctl-sel');
+    ps.appendChild(opt('', 'All people', State.personFilter));
+    State.users.forEach(function (u) { ps.appendChild(opt(u.email, u.name, State.personFilter)); });
+    ps.onchange = function () { State.personFilter = ps.value; drawKanban(); };
+    bar.appendChild(ps);
+  }
+
+  const toggle = el('div', 'viewtoggle');
+  const lb = el('button', 'vt' + (currentView() === 'list' ? ' active' : ''), 'List');
+  const bb = el('button', 'vt' + (currentView() === 'board' ? ' active' : ''), 'Board');
+  lb.onclick = function () { setView('list'); };
+  bb.onclick = function () { setView('board'); };
+  toggle.appendChild(lb); toggle.appendChild(bb);
+  bar.appendChild(toggle);
+
+  return bar;
+}
+function opt(value, label, current) {
+  const o = el('option'); o.value = value; o.textContent = label;
+  if (String(current) === String(value)) o.selected = true;
+  return o;
+}
+
+function buildStats(tasks) {
+  const sfk = statusFieldKey();
+  const total = tasks.length;
+  const done = tasks.filter(function (t) { return String(t[sfk]) === 'Done'; }).length;
+  const prog = tasks.filter(function (t) { return String(t[sfk]) === 'In Progress'; }).length;
+  const attn = tasks.filter(function (t) { return ['Delayed', 'OnHold'].indexOf(String(t[sfk])) >= 0; }).length;
+  const avg = total ? Math.round(tasks.reduce(function (a, t) { return a + (parseInt(t.Progress, 10) || 0); }, 0) / total) : 0;
+  const stats = el('div', 'stats');
+  [['TOTAL', total], ['DONE', done], ['IN PROGRESS', prog], ['DELAYED / HOLD', attn], ['AVG PROGRESS', avg + '%']]
+    .forEach(function (s) {
+      stats.appendChild(el('div', 'stat', '<div class="stat-num">' + s[1] + '</div><div class="stat-label">' + s[0] + '</div>'));
+    });
+  return stats;
+}
+
+/* ------------- list rows ------------- */
+function taskRow(t) {
+  const sfk = statusFieldKey();
+  const status = t[sfk] || '';
+  const prog = parseInt(t.Progress, 10) || 0;
+  const deadline = t.DeadlineDate ? fmtDate(t.DeadlineDate) : '';
+  const row = el('div', 'trow');
+  row.innerHTML =
+    '<div class="trow-top">' +
+      '<span class="trow-title">' + esc(t.Task || t.TaskID) + '</span>' +
+      (t.Company ? '<span class="company-tag sm">' + esc(t.Company) + '</span>' : '') +
+    '</div>' +
+    '<div class="trow-meta">' +
+      '<span class="avstack">' + assigneeAvatars(t, 3) + '</span>' +
+      (status ? '<span class="pill status" style="background:' + statusColor(status) + '">' + esc(status) + '</span>' : '') +
+      (t.SubStatus ? '<span class="badge sm">' + esc(t.SubStatus) + '</span>' : '') +
+      (deadline ? '<span class="deadline">⏱ ' + esc(deadline) + '</span>' : '') +
+      '<span class="pct">' + prog + '%</span>' +
+    '</div>' +
+    '<div class="trow-bar"><div class="trow-fill" style="width:' + prog + '%"></div></div>';
+  row.onclick = function () { openEditor(t); };
+  return row;
+}
+
+/* ------------- render dispatch ------------- */
 function drawKanban() {
   const main = $('#main'); main.innerHTML = '';
 
@@ -193,66 +352,71 @@ function drawKanban() {
   addBtn.onclick = function () { openEditor(null); };
   main.appendChild(addBtn);
 
-  // company filter
-  if (State.companies.length) {
-    const bar = el('div', 'filter-bar');
-    bar.appendChild(el('span', 'muted small', 'Company'));
-    const sel = el('select', 'filter-sel');
-    const all = el('option'); all.value = ''; all.textContent = 'All companies'; sel.appendChild(all);
-    State.companies.forEach(function (c) {
-      const o = el('option'); o.value = c; o.textContent = c;
-      if (c === State.companyFilter) o.selected = true; sel.appendChild(o);
-    });
-    sel.onchange = function () { State.companyFilter = sel.value; drawKanban(); };
-    bar.appendChild(sel);
-    main.appendChild(bar);
-  }
+  main.appendChild(buildControls());
+  const body = el('div', 'board-body'); body.id = 'board-body';
+  main.appendChild(body);
+  redrawBody();
+}
 
+/** Re-render only the stats + list/board (used by live search without losing focus). */
+function redrawBody() {
+  const body = $('#board-body'); if (!body) return drawKanban();
+  body.innerHTML = '';
+  const tasks = filteredTasks();
+  body.appendChild(buildStats(tasks));
+  if (currentView() === 'list') drawList(body, tasks);
+  else drawBoard(body, tasks);
+}
+
+function drawList(container, tasks) {
+  if (!tasks.length) { container.appendChild(el('div', 'empty', 'No tasks match these filters.')); return; }
+  const list = el('div', 'tlist');
+  tasks.forEach(function (t) { list.appendChild(taskRow(t)); });
+  container.appendChild(list);
+}
+
+function drawBoard(container, tasks) {
   const sf = statusField();
   const lists = sf ? sf.options : ['All'];
   const board = el('div', 'kanban');
-  const visibleTasks = State.tasks.filter(function (t) {
-    return !State.companyFilter || String(t.Company || '') === State.companyFilter;
-  });
-
   lists.forEach(function (status) {
     const col = el('div', 'kcol');
-    const rows = visibleTasks.filter(function (t) {
-      return sf ? String(t[sf.fieldKey] || '') === status : true;
-    });
+    const rows = tasks.filter(function (t) { return sf ? String(t[sf.fieldKey] || '') === status : true; });
     col.appendChild(el('div', 'kcol-head', esc(status) + ' <span class="count">' + rows.length + '</span>'));
-    const body = el('div', 'kcol-body');
-    rows.forEach(function (t) { body.appendChild(taskCard(t)); });
-    col.appendChild(body);
+    const cbody = el('div', 'kcol-body');
+    rows.forEach(function (t) { cbody.appendChild(taskCard(t)); });
+    col.appendChild(cbody);
     board.appendChild(col);
   });
-  main.appendChild(board);
+  container.appendChild(board);
 }
 
 function taskCard(t) {
   const card = el('div', 'card');
   const title = t.Task || t.Title || t.TaskID;
+  const pk = peopleKey();
   let meta = '';
   summaryFields().forEach(function (f) {
-    if (f.fieldKey === 'Task') return;
-    if (f.fieldType === 'people') {
-      String(t[f.fieldKey] || '').split('|').filter(Boolean).forEach(function (tok) {
-        const nm = tok.indexOf('@') >= 0 ? userName(tok) : tok;
-        meta += '<span class="pill people-pill">' + esc(nm) + '</span>';
-      });
-      return;
-    }
+    if (f.fieldKey === 'Task' || f.fieldKey === pk) return; // assignee shown as avatars below
     const v = t[f.fieldKey];
     if (v) meta += '<span class="pill">' + esc(f.fieldKey === 'DeadlineDate' ? '⏱ ' + fmtDate(v) : v) + '</span>';
   });
   const sub = t.SubStatus ? '<span class="badge">' + esc(t.SubStatus) + '</span>' : '';
   const company = t.Company ? '<span class="company-tag">' + esc(t.Company) + '</span>' : '';
   const prio = (t.Priority || '').toLowerCase().replace(/\s+/g, '-');
+  const prog = parseInt(t.Progress, 10) || 0;
+  const avs = assigneeAvatars(t, 4);
+  const bottom = (avs || prog)
+    ? '<div class="card-bottom"><span class="avstack">' + avs + '</span>' +
+      (prog ? '<span class="pct">' + prog + '%</span>' : '') + '</div>' +
+      (prog ? '<div class="trow-bar"><div class="trow-fill" style="width:' + prog + '%"></div></div>' : '')
+    : '';
   card.innerHTML =
     '<div class="card-top"><strong>' + esc(title) + '</strong></div>' +
     sub +
     company +
-    '<div class="card-meta">' + meta + '</div>';
+    (meta ? '<div class="card-meta">' + meta + '</div>' : '') +
+    bottom;
   if (prio) card.classList.add('prio-' + prio);
   card.onclick = function () { openEditor(t); };
   return card;
@@ -295,7 +459,8 @@ function openEditor(task) {
     }
 
     const wrap = el('label', 'fld');
-    wrap.appendChild(el('span', 'fld-label', esc(f.label) + (f.isUpdate ? '' : ' •')));
+    const lblSpan = el('span', 'fld-label', esc(f.label) + (f.isUpdate ? '' : ' •'));
+    wrap.appendChild(lblSpan);
     const val = task ? (task[f.fieldKey] != null ? task[f.fieldKey] : '') : '';
     let input;
     if (f.fieldType === 'select') {
@@ -309,6 +474,18 @@ function openEditor(task) {
       input = el('textarea'); input.value = val;
     } else if (f.fieldType === 'date') {
       input = el('input'); input.type = 'date'; input.value = fmtDate(val);
+    } else if (f.fieldType === 'number') {
+      input = el('input'); input.type = 'number'; input.value = val;
+    } else if (f.fieldType === 'range') {
+      const start = parseInt(val, 10) || 0;
+      const pct = el('span', 'range-val', start + '%'); lblSpan.appendChild(pct);
+      const track = el('div', 'progress-track', '<div class="progress-fill" style="width:' + start + '%"></div>');
+      wrap.appendChild(track);
+      input = el('input'); input.type = 'range'; input.min = '0'; input.max = '100'; input.step = '5'; input.value = start;
+      input.oninput = function () {
+        pct.textContent = input.value + '%';
+        track.firstChild.style.width = input.value + '%';
+      };
     } else {
       input = el('input'); input.type = 'text'; input.value = val;
     }
@@ -334,11 +511,27 @@ function openEditor(task) {
   form.appendChild(actions);
 
   if (!creating) {
+    const upd = el('div', 'updates');
+    upd.appendChild(el('h4', null, 'Daily Updates'));
+    if (allowUpdate) {
+      const row = el('div', 'upd-row');
+      const inp = el('input'); inp.type = 'text'; inp.placeholder = "Add today's update…";
+      const post = el('button', 'btn teal', 'Post'); post.type = 'button';
+      const doPost = function () { postUpdate(task, inp, post, upd); };
+      post.onclick = doPost;
+      inp.onkeydown = function (e) { if (e.key === 'Enter') { e.preventDefault(); doPost(); } };
+      row.appendChild(inp); row.appendChild(post); upd.appendChild(row);
+    }
+    const uList = el('div', 'upd-list'); uList.appendChild(el('p', 'muted small', 'Loading…'));
+    upd.appendChild(uList);
+    form.appendChild(upd);
+
     const hist = el('div', 'history');
-    hist.appendChild(el('h4', null, 'History'));
+    hist.appendChild(el('h4', null, 'Change log'));
     hist.appendChild(el('p', 'muted small', 'Loading…'));
     form.appendChild(hist);
-    loadHistory(task, hist);
+
+    loadActivity(task, uList, hist);
   }
 
   showSheet(form);
@@ -430,26 +623,74 @@ function buildPeopleField(f, task, editable) {
   return wrap;
 }
 
-async function loadHistory(task, container) {
+async function loadActivity(task, uList, hist) {
   try {
     const res = await apiCall('getHistory', { taskType: State.board.taskType, taskId: task.TaskID });
-    container.innerHTML = '<h4>History</h4>';
-    if (!res.history.length) { container.appendChild(el('p', 'muted small', 'No changes logged yet.')); return; }
-    const ul = el('ul', 'timeline');
-    res.history.forEach(function (h) {
-      const who = h.ActorEmail;
-      const when = fmtDateTime(h.Timestamp);
-      let what;
-      if (h.Action === 'create') what = '<em>created</em> ' + esc(h.NewValue);
-      else what = '<strong>' + esc(h.Field) + '</strong>: ' + esc(h.OldValue || '∅') + ' → ' + esc(h.NewValue || '∅');
-      const li = el('li');
-      li.innerHTML = '<span class="tl-when">' + esc(when) + '</span>' +
-        '<span class="tl-what">' + what + '</span>' +
-        '<span class="tl-who muted small">' + esc(who) + '</span>';
-      ul.appendChild(li);
-    });
-    container.appendChild(ul);
-  } catch (e) { container.innerHTML = '<h4>History</h4><p class="error small">' + esc(e.message) + '</p>'; }
+    renderUpdates(task, uList, res.history.filter(function (h) { return h.Action === 'note'; }));
+    renderChangeLog(hist, res.history.filter(function (h) { return h.Action !== 'note'; }));
+  } catch (e) {
+    uList.innerHTML = '<p class="error small">' + esc(e.message) + '</p>';
+    hist.innerHTML = '<h4>Change log</h4>';
+  }
+}
+
+function renderUpdates(task, uList, notes) {
+  uList.innerHTML = '';
+  if (!notes.length) { uList.appendChild(el('p', 'muted small', 'No updates yet.')); return; }
+  notes.forEach(function (h) {
+    const canDel = State.me.isAdmin || String(h.ActorEmail).toLowerCase() === String(State.me.email).toLowerCase();
+    const item = el('div', 'upd');
+    item.innerHTML = '<span class="d">' + esc(fmtDate(h.Timestamp)) + '</span>' +
+      '<span class="t">' + esc(h.NewValue) + '</span>' +
+      '<span class="who muted small">' + esc(userName(h.ActorEmail)) + '</span>';
+    if (canDel) {
+      const x = el('button', 'upd-x', '×'); x.type = 'button';
+      x.onclick = function () { deleteUpdate(task, h, uList); };
+      item.appendChild(x);
+    }
+    uList.appendChild(item);
+  });
+}
+
+function renderChangeLog(container, hist) {
+  container.innerHTML = '<h4>Change log</h4>';
+  if (!hist.length) { container.appendChild(el('p', 'muted small', 'No changes logged yet.')); return; }
+  const ul = el('ul', 'timeline');
+  hist.forEach(function (h) {
+    const when = fmtDateTime(h.Timestamp);
+    let what;
+    if (h.Action === 'create') what = '<em>created</em> ' + esc(h.NewValue);
+    else if (h.Action === 'delete') what = '<em>deleted</em>';
+    else what = '<strong>' + esc(h.Field) + '</strong>: ' + esc(h.OldValue || '∅') + ' → ' + esc(h.NewValue || '∅');
+    const li = el('li');
+    li.innerHTML = '<span class="tl-when">' + esc(when) + '</span>' +
+      '<span class="tl-what">' + what + '</span>' +
+      '<span class="tl-who muted small">' + esc(userName(h.ActorEmail)) + '</span>';
+    ul.appendChild(li);
+  });
+  container.appendChild(ul);
+}
+
+async function postUpdate(task, inp, btn, updContainer) {
+  const text = inp.value.trim(); if (!text) return;
+  btn.disabled = true;
+  try {
+    await apiCall('postUpdate', { taskType: State.board.taskType, taskId: task.TaskID, text: text });
+    inp.value = '';
+    const res = await apiCall('getHistory', { taskType: State.board.taskType, taskId: task.TaskID });
+    renderUpdates(task, updContainer.querySelector('.upd-list'), res.history.filter(function (h) { return h.Action === 'note'; }));
+    toast('Update posted');
+  } catch (e) { toast(e.message); }
+  finally { btn.disabled = false; }
+}
+
+async function deleteUpdate(task, note, uList) {
+  if (!confirm('Delete this update?')) return;
+  try {
+    await apiCall('deleteUpdate', { historyId: note.HistoryID });
+    const res = await apiCall('getHistory', { taskType: State.board.taskType, taskId: task.TaskID });
+    renderUpdates(task, uList, res.history.filter(function (h) { return h.Action === 'note'; }));
+  } catch (e) { toast(e.message); }
 }
 
 function fmtDateTime(v) {
