@@ -542,3 +542,15 @@ body::after {
 .check-text.done { text-decoration: line-through; color: var(--muted); }
 .pill.check { background: color-mix(in srgb, var(--brand-3) 16%, transparent); color: var(--brand); border-color: color-mix(in srgb, var(--brand-3) 30%, var(--line)); font-weight: 700; }
 :root[data-theme="dark"] .pill.check { color: var(--brand-3); }
+
+/* ---------- editor collapsible sections ---------- */
+.ed-section { border: 1px solid var(--line); border-radius: var(--radius-sm); margin-bottom: 12px; background: color-mix(in srgb, var(--surface-solid) 55%, transparent); overflow: hidden; }
+.ed-sum { list-style: none; cursor: pointer; padding: 13px 16px; font-weight: 700; font-size: 13px; letter-spacing: .04em; text-transform: uppercase; color: var(--brand); display: flex; align-items: center; justify-content: space-between; }
+:root[data-theme="dark"] .ed-sum { color: var(--brand-2); }
+.ed-sum::-webkit-details-marker { display: none; }
+.ed-chev { transition: transform .2s; color: var(--muted); font-size: 14px; }
+.ed-section[open] > .ed-sum { border-bottom: 1px solid var(--line); }
+.ed-section[open] > .ed-sum .ed-chev { transform: rotate(180deg); }
+.ed-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 14px; }
+.ed-body .fld { margin: 0; }
+.ed-body .updates, .ed-body .history { margin-top: 0; }

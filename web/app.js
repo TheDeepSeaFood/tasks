@@ -436,74 +436,40 @@ function openEditor(task) {
   form.appendChild(el('div', 'sheet-grip'));
   form.appendChild(el('h3', null, creating ? 'New ' + State.board.taskType + ' task' : 'Edit task'));
 
-  // Company — global definition field on every board
-  if (State.companies.length) {
-    const cwrap = el('label', 'fld');
-    cwrap.appendChild(el('span', 'fld-label', 'Company •'));
-    const csel = el('select');
-    const blank = el('option'); blank.value = ''; blank.textContent = '—'; csel.appendChild(blank);
-    const cur = task ? (task.Company || '') : '';
-    State.companies.forEach(function (c) {
-      const o = el('option'); o.value = c; o.textContent = c;
-      if (String(cur) === c) o.selected = true; csel.appendChild(o);
-    });
-    csel.dataset.key = 'Company';
-    csel.dataset.update = '0';
-    if (!allowDefine) csel.setAttribute('disabled', 'disabled');
-    cwrap.appendChild(csel); form.appendChild(cwrap);
+  const editableFor = function (f) { return f.isUpdate ? allowUpdate : allowDefine; };
+  const byKey = {}; fields.forEach(function (f) { byKey[f.fieldKey] = f; });
+  const placed = {};
+
+  function addField(body, key) {
+    if (key === 'Company') {
+      if (placed.Company) return;
+      const c = renderCompanyEl(task, allowDefine);
+      if (c) { body.appendChild(c); placed.Company = 1; }
+      return;
+    }
+    const f = byKey[key];
+    if (!f || placed[key]) return;
+    placed[key] = 1;
+    body.appendChild(renderFieldEl(f, task, editableFor(f)));
+  }
+  function buildSection(title, open, keys) {
+    const body = el('div', 'ed-body');
+    keys.forEach(function (k) { addField(body, k); });
+    if (!body.children.length) return;
+    const d = el('details', 'ed-section'); if (open) d.open = true;
+    d.appendChild(el('summary', 'ed-sum', esc(title) + '<span class="ed-chev">▾</span>'));
+    d.appendChild(body);
+    form.appendChild(d);
   }
 
-  fields.forEach(function (f) {
-    const editable = f.isUpdate ? allowUpdate : allowDefine;
+  buildSection('Overview', true, ['Task', 'Company', 'Requirement', 'AssignedTo']);
+  buildSection('Status & Progress', true, ['Status', 'Progress', 'SubStatus', 'Remarks', 'DeadlineDate']);
+  buildSection('Checklist', true, ['Checklist']);
+  buildSection('Details', false, ['Category', 'Type', 'Priority', 'Weight', 'AssignedDate', 'LastUpdateDate']);
+  const leftover = fields.filter(function (f) { return !placed[f.fieldKey]; }).map(function (f) { return f.fieldKey; });
+  if (leftover.length) buildSection('More', false, leftover);
 
-    if (f.fieldType === 'people') {
-      form.appendChild(buildPeopleField(f, task, editable));
-      return;
-    }
-    if (f.fieldType === 'checklist') {
-      form.appendChild(buildChecklistField(f, task, editable));
-      return;
-    }
-
-    const wrap = el('label', 'fld');
-    const lblSpan = el('span', 'fld-label', esc(f.label) + (f.isUpdate ? '' : ' •'));
-    wrap.appendChild(lblSpan);
-    const val = task ? (task[f.fieldKey] != null ? task[f.fieldKey] : '') : '';
-    let input;
-    if (f.fieldType === 'select') {
-      input = el('select');
-      const blank = el('option'); blank.value = ''; blank.textContent = '—'; input.appendChild(blank);
-      f.options.forEach(function (opt) {
-        const o = el('option'); o.value = opt; o.textContent = opt;
-        if (String(val) === opt) o.selected = true; input.appendChild(o);
-      });
-    } else if (f.fieldType === 'longtext') {
-      input = el('textarea'); input.value = val;
-    } else if (f.fieldType === 'date') {
-      input = el('input'); input.type = 'date'; input.value = fmtDate(val);
-    } else if (f.fieldType === 'number') {
-      input = el('input'); input.type = 'number'; input.value = val;
-    } else if (f.fieldType === 'range') {
-      const start = parseInt(val, 10) || 0;
-      const pct = el('span', 'range-val', start + '%'); lblSpan.appendChild(pct);
-      const track = el('div', 'progress-track', '<div class="progress-fill" style="width:' + start + '%"></div>');
-      wrap.appendChild(track);
-      input = el('input'); input.type = 'range'; input.min = '0'; input.max = '100'; input.step = '5'; input.value = start;
-      input.oninput = function () {
-        pct.textContent = input.value + '%';
-        track.firstChild.style.width = input.value + '%';
-      };
-    } else {
-      input = el('input'); input.type = 'text'; input.value = val;
-    }
-    input.dataset.key = f.fieldKey;
-    input.dataset.update = f.isUpdate ? '1' : '0';
-    if (!editable) input.setAttribute('disabled', 'disabled');
-    wrap.appendChild(input); form.appendChild(wrap);
-  });
-
-  const legend = el('p', 'muted small', '• = definition field (set by whoever assigned the task)');
-  form.appendChild(legend);
+  form.appendChild(el('p', 'muted small', '• = definition field (set by whoever assigned the task)'));
 
   const actions = el('div', 'sheet-actions');
   const cancel = el('button', 'btn ghost', 'Cancel'); cancel.onclick = closeSheet;
@@ -518,6 +484,10 @@ function openEditor(task) {
   form.appendChild(actions);
 
   if (!creating) {
+    const act = el('details', 'ed-section');
+    act.appendChild(el('summary', 'ed-sum', 'Activity<span class="ed-chev">▾</span>'));
+    const actBody = el('div', 'ed-body'); act.appendChild(actBody); form.appendChild(act);
+
     const upd = el('div', 'updates');
     upd.appendChild(el('h4', null, 'Daily Updates'));
     if (allowUpdate) {
@@ -531,17 +501,78 @@ function openEditor(task) {
     }
     const uList = el('div', 'upd-list'); uList.appendChild(el('p', 'muted small', 'Loading…'));
     upd.appendChild(uList);
-    form.appendChild(upd);
+    actBody.appendChild(upd);
 
     const hist = el('div', 'history');
     hist.appendChild(el('h4', null, 'Change log'));
     hist.appendChild(el('p', 'muted small', 'Loading…'));
-    form.appendChild(hist);
+    actBody.appendChild(hist);
 
     loadActivity(task, uList, hist);
   }
 
   showSheet(form);
+}
+
+/** Company select (global definition field), or null if no companies. */
+function renderCompanyEl(task, allowDefine) {
+  if (!State.companies.length) return null;
+  const cwrap = el('label', 'fld');
+  cwrap.appendChild(el('span', 'fld-label', 'Company •'));
+  const csel = el('select');
+  const blank = el('option'); blank.value = ''; blank.textContent = '—'; csel.appendChild(blank);
+  const cur = task ? (task.Company || '') : '';
+  State.companies.forEach(function (c) {
+    const o = el('option'); o.value = c; o.textContent = c;
+    if (String(cur) === c) o.selected = true; csel.appendChild(o);
+  });
+  csel.dataset.key = 'Company'; csel.dataset.update = '0';
+  if (!allowDefine) csel.setAttribute('disabled', 'disabled');
+  cwrap.appendChild(csel);
+  return cwrap;
+}
+
+/** One board field as an editable form control element. */
+function renderFieldEl(f, task, editable) {
+  if (f.fieldType === 'people') return buildPeopleField(f, task, editable);
+  if (f.fieldType === 'checklist') return buildChecklistField(f, task, editable);
+
+  const wrap = el('label', 'fld');
+  const lblSpan = el('span', 'fld-label', esc(f.label) + (f.isUpdate ? '' : ' •'));
+  wrap.appendChild(lblSpan);
+  const val = task ? (task[f.fieldKey] != null ? task[f.fieldKey] : '') : '';
+  let input;
+  if (f.fieldType === 'select') {
+    input = el('select');
+    const blank = el('option'); blank.value = ''; blank.textContent = '—'; input.appendChild(blank);
+    f.options.forEach(function (opt) {
+      const o = el('option'); o.value = opt; o.textContent = opt;
+      if (String(val) === opt) o.selected = true; input.appendChild(o);
+    });
+  } else if (f.fieldType === 'longtext') {
+    input = el('textarea'); input.value = val;
+  } else if (f.fieldType === 'date') {
+    input = el('input'); input.type = 'date'; input.value = fmtDate(val);
+  } else if (f.fieldType === 'number') {
+    input = el('input'); input.type = 'number'; input.value = val;
+  } else if (f.fieldType === 'range') {
+    const start = parseInt(val, 10) || 0;
+    const pct = el('span', 'range-val', start + '%'); lblSpan.appendChild(pct);
+    const track = el('div', 'progress-track', '<div class="progress-fill" style="width:' + start + '%"></div>');
+    wrap.appendChild(track);
+    input = el('input'); input.type = 'range'; input.min = '0'; input.max = '100'; input.step = '5'; input.value = start;
+    input.oninput = function () {
+      pct.textContent = input.value + '%';
+      track.firstChild.style.width = input.value + '%';
+    };
+  } else {
+    input = el('input'); input.type = 'text'; input.value = val;
+  }
+  input.dataset.key = f.fieldKey;
+  input.dataset.update = f.isUpdate ? '1' : '0';
+  if (!editable) input.setAttribute('disabled', 'disabled');
+  wrap.appendChild(input);
+  return wrap;
 }
 
 function userName(email) {
