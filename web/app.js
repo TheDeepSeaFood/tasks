@@ -462,9 +462,9 @@ function openEditor(task) {
     form.appendChild(d);
   }
 
-  buildSection('Overview', true, ['Task', 'Company', 'Requirement', 'AssignedTo']);
-  buildSection('Status & Progress', true, ['Status', 'Progress', 'SubStatus', 'Remarks', 'DeadlineDate']);
-  buildSection('Checklist', true, ['Checklist']);
+  buildSection('Overview', false, ['Task', 'Company', 'Requirement', 'AssignedTo']);
+  buildSection('Status & Progress', false, ['Status', 'Progress', 'SubStatus', 'Remarks', 'DeadlineDate']);
+  buildSection('Checklist', false, ['Checklist']);
   buildSection('Details', false, ['Category', 'Type', 'Priority', 'Weight', 'AssignedDate', 'LastUpdateDate']);
   const leftover = fields.filter(function (f) { return !placed[f.fieldKey]; }).map(function (f) { return f.fieldKey; });
   if (leftover.length) buildSection('More', false, leftover);
