@@ -1,6 +1,6 @@
 /* App-shell service worker. Caches the static UI so the PWA opens instantly and
    offline; task DATA always goes to the network (never cached). */
-const CACHE = 'taskmgr-shell-v11';
+const CACHE = 'taskmgr-shell-v12';
 const SHELL = [
   './', './index.html', './styles.css',
   './config.js', './auth.js', './api.js', './app.js',
@@ -24,10 +24,12 @@ self.addEventListener('fetch', function (e) {
   const url = new URL(e.request.url);
   // Never touch API calls or Google auth — always straight to network.
   if (url.origin !== location.origin || e.request.method !== 'GET') return;
-  // Network-first so a bad/stale cache can never white-screen the app; fall
-  // back to cache only when offline. Keeps the cache fresh for offline use.
+  // Network-first AND revalidating: force-bypass the HTTP cache so a fresh
+  // deploy is picked up on the next load (GitHub Pages sends max-age=600, which
+  // otherwise serves stale app.js/styles.css for 10 min). Fall back to our
+  // CacheStorage copy only when offline.
   e.respondWith(
-    fetch(e.request).then(function (resp) {
+    fetch(new Request(url.href, { cache: 'no-cache', credentials: 'same-origin' })).then(function (resp) {
       if (resp && resp.ok) {
         const copy = resp.clone();
         caches.open(CACHE).then(function (c) { c.put(e.request, copy); });
