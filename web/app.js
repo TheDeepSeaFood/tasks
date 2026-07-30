@@ -131,11 +131,19 @@ function renderHome() {
 }
 
 /* --------------------------- board ---------------------------- */
+function uniqCompanies(list) {
+  const seen = {}, out = [];
+  (list || []).forEach(function (c) {
+    const k = String(c).trim().toLowerCase();
+    if (k && !seen[k]) { seen[k] = true; out.push(c); }
+  });
+  return out;
+}
 function applyBoardData(taskType, data) {
   State.board = { taskType: taskType, fields: data.fields };
   State.tasks = data.tasks || [];
   State.users = data.users || [];
-  State.companies = data.companies || [];
+  State.companies = uniqCompanies(data.companies || []);
 }
 function saveBoardCache(taskType, data) {
   try { localStorage.setItem('board:' + taskType, JSON.stringify(data)); } catch (e) { /* quota/private */ }
