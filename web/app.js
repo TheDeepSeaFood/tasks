@@ -161,9 +161,9 @@ function persistBoardCache() {
 
 async function renderBoard(taskType, company) {
   State.activeCompany = company || null;
-  State.companyFilter = company || '';
+  State.companyFilter = (company && company !== '__all__') ? company : '';
   State.statusFilter = ''; State.personFilter = ''; State.search = '';
-  $('#title').textContent = company ? company : taskType;
+  $('#title').textContent = company ? (company === '__all__' ? taskType : company) : taskType;
   $('#back-btn').classList.remove('hidden');
   const main = $('#main');
 
@@ -274,7 +274,7 @@ function buildControls() {
   search.oninput = function () { State.search = search.value; redrawBody(); };
   bar.appendChild(search);
 
-  if (State.companies.length && !State.activeCompany) {
+  if (State.companies.length && (!State.activeCompany || State.activeCompany === '__all__')) {
     const cs = el('select', 'ctl-sel');
     cs.appendChild(opt('', 'All companies', State.companyFilter));
     State.companies.forEach(function (c) { cs.appendChild(opt(c, c, State.companyFilter)); });
@@ -367,6 +367,13 @@ function drawCompanyGrid() {
   State.tasks.forEach(function (t) { const c = String(t.Company || ''); if (c) counts[c] = (counts[c] || 0) + 1; });
 
   const grid = el('div', 'board-grid');
+
+  const allCard = el('button', 'board-tile');
+  allCard.innerHTML = '<span class="tile-type">All tasks</span>' +
+    '<span class="tile-go">' + State.tasks.length + ' task' + (State.tasks.length === 1 ? '' : 's') + ' →</span>';
+  allCard.onclick = function () { nav('board/' + encodeURIComponent(State.board.taskType) + '/__all__'); };
+  grid.appendChild(allCard);
+
   State.companies.forEach(function (c) {
     const n = counts[c] || 0;
     const card = el('button', 'board-tile');

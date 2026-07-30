@@ -72,6 +72,49 @@ function setup_seedMarketingConfig() {
   clearTableCache_('Boards');
 }
 
+/**
+ * Create the IT department boards (IT Hardware + Software) alongside Marketing.
+ * Idempotent. Run once from the editor after deploying.
+ */
+function setup_seedITBoards() {
+  setup_seedBoard_('IT', 'IT Hardware');
+  setup_seedBoard_('IT', 'Software');
+}
+
+/** Create one task board: a task tab + its Boards config (replaced if present). */
+function setup_seedBoard_(department, taskType) {
+  const ss = ss_();
+  const headers = ['TaskID', 'AssignerEmail', 'AssigneeEmail', 'CreatedAt',
+    'Task', 'Status', 'Requirement', 'Category', 'Priority', 'AssignedTo',
+    'AssignedDate', 'DeadlineDate', 'SubStatus', 'Remarks', 'LastUpdateDate', 'Company',
+    'Progress', 'Weight', 'Type', 'Checklist'];
+  ensureSheet_(ss, taskType, headers);
+
+  const rows = [
+    [department, taskType, 'Task',           'Task',            'text',     '', false, false, 1],
+    [department, taskType, 'Requirement',    'Requirement',     'longtext', '', false, false, 2],
+    [department, taskType, 'Category',       'Category',        'select',   'Hardware|Software|Network|Support|Procurement|ERP/CRM|Website|Other', false, false, 3],
+    [department, taskType, 'Type',           'Type',            'select',   'Deadline|Recurring|Plan', false, false, 4],
+    [department, taskType, 'Priority',       'Priority',        'select',   'Low|Medium|High', false, false, 5],
+    [department, taskType, 'Weight',         'Weight',          'number',   '', false, false, 6],
+    [department, taskType, 'AssignedTo',     'Assigned To',     'people',   '', false, false, 7],
+    [department, taskType, 'AssignedDate',   'Assigned Date',   'date',     '', false, false, 8],
+    [department, taskType, 'DeadlineDate',   'Deadline Date',   'date',     '', false, false, 9],
+    [department, taskType, 'Status',         'Status',          'select',   'New|In Progress|OnHold|In Review|Done', true, true, 10],
+    [department, taskType, 'Progress',       'Progress',        'range',    '', true, false, 11],
+    [department, taskType, 'SubStatus',      'Sub-status',      'select',   'In Progress|OnHold', true, false, 12],
+    [department, taskType, 'Remarks',        'Remarks',         'longtext', '', true, false, 13],
+    [department, taskType, 'LastUpdateDate', 'Last Update Date','date',     '', true, false, 14],
+    [department, taskType, 'Checklist',      'Checklist',       'checklist','', true, false, 15]
+  ];
+  const sh = ss.getSheetByName('Boards');
+  const vals = sh.getDataRange().getValues();
+  const iType = vals[0].indexOf('taskType');
+  for (var i = vals.length - 1; i >= 1; i--) { if (vals[i][iType] === taskType) sh.deleteRow(i + 1); }
+  sh.getRange(sh.getLastRow() + 1, 1, rows.length, rows[0].length).setValues(rows);
+  clearTableCache_('Boards');
+}
+
 /** Remove duplicate board-config rows, keeping the first of each
  *  department+taskType+fieldKey. Fixes doubled fields in the task editor caused
  *  by running setup_seedMarketingConfig more than once. Safe to run anytime. */
