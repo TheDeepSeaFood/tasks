@@ -532,3 +532,13 @@ body::after {
 }
 .card-bottom { display: flex; align-items: center; gap: 8px; margin-top: 11px; }
 .card-bottom .pct { margin-left: auto; }
+
+/* ---------- checklist ---------- */
+.check-list { display: flex; flex-direction: column; gap: 4px; margin: 8px 0; }
+.check-item { display: flex; align-items: center; gap: 9px; padding: 5px 4px; border-radius: 7px; }
+.check-item:hover { background: color-mix(in srgb, var(--brand) 5%, transparent); }
+.check-item input[type=checkbox] { width: 17px; height: 17px; accent-color: var(--brand-2); flex-shrink: 0; }
+.check-text { flex: 1; font-size: 13.5px; color: var(--ink); }
+.check-text.done { text-decoration: line-through; color: var(--muted); }
+.pill.check { background: color-mix(in srgb, var(--brand-3) 16%, transparent); color: var(--brand); border-color: color-mix(in srgb, var(--brand-3) 30%, var(--line)); font-weight: 700; }
+:root[data-theme="dark"] .pill.check { color: var(--brand-3); }

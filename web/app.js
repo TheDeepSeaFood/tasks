@@ -335,6 +335,7 @@ function taskRow(t) {
       '<span class="avstack">' + assigneeAvatars(t, 3) + '</span>' +
       (status ? '<span class="pill status" style="background:' + statusColor(status) + '">' + esc(status) + '</span>' : '') +
       (t.SubStatus ? '<span class="badge sm">' + esc(t.SubStatus) + '</span>' : '') +
+      (checklistSummary(t) ? '<span class="pill check">☑ ' + checklistSummary(t).done + '/' + checklistSummary(t).total + '</span>' : '') +
       (deadline ? '<span class="deadline">⏱ ' + esc(deadline) + '</span>' : '') +
       '<span class="pct">' + prog + '%</span>' +
     '</div>' +
@@ -401,6 +402,8 @@ function taskCard(t) {
     const v = t[f.fieldKey];
     if (v) meta += '<span class="pill">' + esc(f.fieldKey === 'DeadlineDate' ? '⏱ ' + fmtDate(v) : v) + '</span>';
   });
+  const cs = checklistSummary(t);
+  if (cs) meta = '<span class="pill check">☑ ' + cs.done + '/' + cs.total + '</span>' + meta;
   const sub = t.SubStatus ? '<span class="badge">' + esc(t.SubStatus) + '</span>' : '';
   const company = t.Company ? '<span class="company-tag">' + esc(t.Company) + '</span>' : '';
   const prio = (t.Priority || '').toLowerCase().replace(/\s+/g, '-');
@@ -455,6 +458,10 @@ function openEditor(task) {
 
     if (f.fieldType === 'people') {
       form.appendChild(buildPeopleField(f, task, editable));
+      return;
+    }
+    if (f.fieldType === 'checklist') {
+      form.appendChild(buildChecklistField(f, task, editable));
       return;
     }
 
@@ -540,6 +547,65 @@ function openEditor(task) {
 function userName(email) {
   const u = State.users.filter(function (x) { return x.email === email; })[0];
   return u ? u.name : email;
+}
+
+/* ------------- checklist ------------- */
+function parseChecklist(v) {
+  if (!v) return [];
+  try { const a = JSON.parse(v); return Array.isArray(a) ? a : []; } catch (e) { return []; }
+}
+function checklistSummary(t) {
+  const items = parseChecklist(t.Checklist);
+  if (!items.length) return null;
+  return { done: items.filter(function (i) { return i.done; }).length, total: items.length };
+}
+function buildChecklistField(f, task, editable) {
+  const wrap = el('label', 'fld');
+  const lbl = el('span', 'fld-label', esc(f.label) + (f.isUpdate ? '' : ' •'));
+  const count = el('span', 'range-val'); lbl.appendChild(count);
+  wrap.appendChild(lbl);
+  const bar = el('div', 'progress-track', '<div class="progress-fill"></div>'); wrap.appendChild(bar);
+
+  let items = parseChecklist(task && task[f.fieldKey]);
+  const hidden = el('input'); hidden.type = 'hidden';
+  hidden.dataset.key = f.fieldKey; hidden.dataset.update = f.isUpdate ? '1' : '0';
+  const list = el('div', 'check-list');
+
+  function sync() { hidden.value = items.length ? JSON.stringify(items) : ''; }
+  function render() {
+    const done = items.filter(function (i) { return i.done; }).length;
+    count.textContent = done + '/' + items.length;
+    bar.firstChild.style.width = (items.length ? Math.round(done / items.length * 100) : 0) + '%';
+    list.innerHTML = '';
+    if (!items.length) { list.appendChild(el('p', 'muted small', 'No checklist items yet.')); return; }
+    items.forEach(function (it, idx) {
+      const row = el('div', 'check-item');
+      const cb = el('input'); cb.type = 'checkbox'; cb.checked = !!it.done; cb.disabled = !editable;
+      cb.onchange = function () { it.done = cb.checked; sync(); render(); };
+      const txt = el('span', 'check-text' + (it.done ? ' done' : '')); txt.textContent = it.text;
+      row.appendChild(cb); row.appendChild(txt);
+      if (editable) {
+        const x = el('button', 'upd-x', '×'); x.type = 'button';
+        x.onclick = function () { items.splice(idx, 1); sync(); render(); };
+        row.appendChild(x);
+      }
+      list.appendChild(row);
+    });
+  }
+  wrap.appendChild(list);
+
+  if (editable) {
+    const addRow = el('div', 'upd-row');
+    const inp = el('input'); inp.type = 'text'; inp.placeholder = 'Add an item…';
+    const add = el('button', 'btn teal', 'Add'); add.type = 'button';
+    const doAdd = function () { const v = inp.value.trim(); if (!v) return; items.push({ text: v, done: false }); inp.value = ''; sync(); render(); };
+    add.onclick = doAdd;
+    inp.onkeydown = function (e) { if (e.key === 'Enter') { e.preventDefault(); doAdd(); } };
+    addRow.appendChild(inp); addRow.appendChild(add); wrap.appendChild(addRow);
+  }
+  wrap.appendChild(hidden);
+  sync(); render();
+  return wrap;
 }
 
 /** Chip multi-picker: internal users (stored as email) + external names (raw text). */

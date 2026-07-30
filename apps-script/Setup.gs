@@ -19,7 +19,7 @@ function setup_createTabs() {
   ensureSheet_(ss, 'Marketing', ['TaskID', 'AssignerEmail', 'AssigneeEmail', 'CreatedAt',
     'Task', 'Status', 'Requirement', 'Category', 'Priority', 'AssignedTo',
     'AssignedDate', 'DeadlineDate', 'SubStatus', 'Remarks', 'LastUpdateDate', 'Company',
-    'Progress', 'Weight', 'Type']);
+    'Progress', 'Weight', 'Type', 'Checklist']);
 }
 
 /** Seed the sub-companies under the group. Add more rows in the Companies tab anytime. */
@@ -57,7 +57,8 @@ function setup_seedMarketingConfig() {
     ['Marketing', 'Marketing', 'Progress',       'Progress',        'range',    '', true, false, 11],
     ['Marketing', 'Marketing', 'SubStatus',      'Sub-status',      'select',   'In Progress|OnHold', true, false, 12],
     ['Marketing', 'Marketing', 'Remarks',        'Remarks',         'longtext', '', true, false, 13],
-    ['Marketing', 'Marketing', 'LastUpdateDate', 'Last Update Date','date',     '', true, false, 14]
+    ['Marketing', 'Marketing', 'LastUpdateDate', 'Last Update Date','date',     '', true, false, 14],
+    ['Marketing', 'Marketing', 'Checklist',      'Checklist',       'checklist','', true, false, 15]
   ];
   const sh = ss_().getSheetByName('Boards');
   // Idempotent + self-healing: drop any existing Marketing config (old field
