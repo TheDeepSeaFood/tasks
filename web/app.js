@@ -933,6 +933,27 @@ async function renderHierarchy() {
   main.innerHTML = '';
   main.appendChild(el('p', 'muted', 'Set each person’s manager to shape who sees what. Top-level people (no manager) plus “see-all” see everything.'));
 
+  const view = window.__Hview === 'graph' ? 'graph' : 'list';
+  const toggle = el('div', 'viewtoggle');
+  const lb = el('button', 'vt' + (view === 'list' ? ' active' : ''), 'List');
+  const gb = el('button', 'vt' + (view === 'graph' ? ' active' : ''), 'Graph');
+  lb.onclick = function () { window.__Hview = 'list'; renderHierarchy(); };
+  gb.onclick = function () { window.__Hview = 'graph'; renderHierarchy(); };
+  toggle.appendChild(lb); toggle.appendChild(gb);
+  main.appendChild(toggle);
+
+  if (view === 'graph') {
+    main.appendChild(orgChart(H));
+    const gsave = el('button', 'btn primary wide', 'Save hierarchy');
+    gsave.onclick = async function () {
+      try { await apiCall('saveHierarchy', { users: H.users, edges: H.edges }); window.__H = null; toast('Saved'); }
+      catch (e) { toast(e.message); }
+    };
+    main.appendChild(gsave);
+    window.__H = H;
+    return;
+  }
+
   const tree = el('div', 'tree');
   function parentOf(email) {
     const e = H.edges.filter(function (x) { return x.childEmail === email; })[0];
@@ -946,9 +967,20 @@ async function renderHierarchy() {
     nameIn.placeholder = 'name'; nameIn.oninput = function () { u.name = nameIn.value; };
     const desigIn = el('input', 'u-desig'); desigIn.type = 'text'; desigIn.value = u.designation || '';
     desigIn.placeholder = 'designation'; desigIn.oninput = function () { u.designation = desigIn.value; };
+    const emailIn = el('input', 'u-email'); emailIn.type = 'email'; emailIn.value = u.email || '';
+    emailIn.placeholder = 'email (sign-in address)';
+    emailIn.onchange = function () {
+      const nw = emailIn.value.trim().toLowerCase();
+      if (!nw || nw === u.email) { emailIn.value = u.email; return; }
+      if (H.users.some(function (x) { return x !== u && x.email === nw; })) { toast('That email already exists'); emailIn.value = u.email; return; }
+      const old = u.email;
+      H.edges.forEach(function (e) { if (e.parentEmail === old) e.parentEmail = nw; if (e.childEmail === old) e.childEmail = nw; });
+      u.email = nw;
+      renderHierarchyFrom(H);
+    };
     idcol.appendChild(nameIn);
     idcol.appendChild(desigIn);
-    idcol.appendChild(el('span', 'muted small', esc(u.email)));
+    idcol.appendChild(emailIn);
     row.appendChild(idcol);
 
     const sel = el('select', 'mgr-sel');
@@ -1012,6 +1044,32 @@ async function renderHierarchy() {
   window.__H = H;
 }
 function renderHierarchyFrom(H) { window.__H = H; renderHierarchy(); }
+
+/** Read-only top-down org chart from the hierarchy edges. */
+function orgChart(H) {
+  const childrenOf = {}, isChild = {}, byEmail = {};
+  H.users.forEach(function (u) { byEmail[u.email] = u; });
+  H.edges.forEach(function (e) {
+    (childrenOf[e.parentEmail] = childrenOf[e.parentEmail] || []).push(e.childEmail);
+    isChild[e.childEmail] = true;
+  });
+  const roots = H.users.filter(function (u) { return !isChild[u.email]; });
+  function node(email) {
+    const u = byEmail[email]; if (!u) return '';
+    const kids = childrenOf[email] || [];
+    const badge = (u.itManagerGroup || u.superDev) ? '<span class="org-badge">see-all</span>' : '';
+    let html = '<li><div class="org-node"><strong>' + esc(u.name || email) + '</strong>' + badge +
+      (u.designation ? '<span class="org-desig">' + esc(u.designation) + '</span>' : '') + '</div>';
+    if (kids.length) html += '<ul>' + kids.map(node).join('') + '</ul>';
+    return html + '</li>';
+  }
+  const wrap = el('div', 'org-scroll');
+  const chart = el('div', 'org');
+  chart.innerHTML = roots.length ? '<ul>' + roots.map(function (r) { return node(r.email); }).join('') + '</ul>'
+    : '<p class="muted small">No people yet.</p>';
+  wrap.appendChild(chart);
+  return wrap;
+}
 
 /* -------------------- companies editor (admin) -------------------- */
 async function renderCompanies() {

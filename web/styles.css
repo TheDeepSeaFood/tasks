@@ -556,3 +556,23 @@ body::after {
 .ed-body .updates, .ed-body .history { margin-top: 0; }
 .board-tile.tile-add { border-style: dashed; color: var(--muted); font-style: normal; align-items: center; justify-content: center; text-align: center; min-height: 132px; }
 .board-tile.tile-add .tile-type { font-size: 16px; color: var(--brand-2); }
+
+/* ---------- hierarchy: editable email + org chart ---------- */
+.u-email { width: 100%; margin-top: 4px; background: var(--surface-solid); border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px; color: var(--ink); font-size: 12.5px; }
+.org-scroll { overflow-x: auto; padding: 10px 2px 18px; }
+.org { display: inline-block; min-width: 100%; text-align: center; }
+.org ul { display: flex; justify-content: center; gap: 16px; padding-top: 20px; position: relative; list-style: none; margin: 0; }
+.org li { position: relative; padding-top: 20px; list-style: none; }
+/* connectors */
+.org li::before, .org li::after { content: ""; position: absolute; top: 0; height: 20px; width: 50%; border-top: 2px solid var(--line); }
+.org li::before { left: 0; }
+.org li::after { right: 0; border-left: 2px solid var(--line); }
+.org li:only-child::before, .org li:only-child::after { display: none; }
+.org li:first-child::before, .org li:last-child::after { border: 0; }
+.org li:last-child::before { border-right: 2px solid var(--line); border-radius: 0 6px 0 0; }
+.org li:first-child::after { border-radius: 6px 0 0 0; }
+.org ul ul::before { content: ""; position: absolute; top: 0; left: 50%; height: 20px; border-left: 2px solid var(--line); }
+.org-node { display: inline-flex; flex-direction: column; gap: 2px; align-items: center; background: var(--surface-solid); border: 1px solid var(--line); border-radius: 10px; padding: 9px 14px; box-shadow: var(--shadow); white-space: nowrap; }
+.org-node strong { color: var(--ink); font-size: 13.5px; }
+.org-desig { font-size: 10.5px; color: var(--muted); max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
+.org-badge { font-size: 9px; font-weight: 700; color: var(--brand-2); background: color-mix(in srgb, var(--brand-2) 14%, transparent); border-radius: 6px; padding: 1px 6px; }
