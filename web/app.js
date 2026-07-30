@@ -6,6 +6,7 @@ const State = {
   users: [],         // visible users for pickers [{email,name}]
   companies: [],     // sub-company names
   companyFilter: '', // '' = all
+  activeCompany: null, // company drilled into within a board (null = show company grid)
   statusFilter: '',  // '' = all
   personFilter: '',  // '' = all (email)
   search: '',        // text search
@@ -90,7 +91,7 @@ function routeChanged() {
   const parts = h.split('/');
   if (parts[0] !== 'hierarchy') window.__H = null; // drop unsaved hierarchy edits on leave
   if (parts[0] !== 'companies') window.__C = null; // drop unsaved company edits on leave
-  if (parts[0] === 'board' && parts[1]) return renderBoard(decodeURIComponent(parts[1]));
+  if (parts[0] === 'board' && parts[1]) return renderBoard(decodeURIComponent(parts[1]), parts[2] != null ? decodeURIComponent(parts[2]) : null);
   if (parts[0] === 'hierarchy') return renderHierarchy();
   if (parts[0] === 'companies') return renderCompanies();
   return renderHome();
@@ -150,15 +151,17 @@ function persistBoardCache() {
   });
 }
 
-async function renderBoard(taskType) {
-  $('#title').textContent = taskType;
+async function renderBoard(taskType, company) {
+  State.activeCompany = company || null;
+  State.companyFilter = company || '';
+  State.statusFilter = ''; State.personFilter = ''; State.search = '';
+  $('#title').textContent = company ? company : taskType;
   $('#back-btn').classList.remove('hidden');
   const main = $('#main');
-  State.companyFilter = '';
 
   // Instant paint from the last-seen data, if we have it…
   const cached = loadBoardCache(taskType);
-  if (cached) { applyBoardData(taskType, cached); drawKanban(); }
+  if (cached) { applyBoardData(taskType, cached); drawView(); }
   else { main.innerHTML = '<p class="muted">Loading…</p>'; }
 
   // …then refresh from the network (foreground if no cache, background if cached).
@@ -167,7 +170,7 @@ async function renderBoard(taskType) {
     saveBoardCache(taskType, data);
     if (location.hash.indexOf(encodeURIComponent(taskType)) >= 0 || (State.board && State.board.taskType === taskType)) {
       applyBoardData(taskType, data);
-      drawKanban();
+      drawView();
     }
   } catch (e) {
     if (!cached) main.innerHTML = '<p class="error">' + esc(e.message) + '</p>';
@@ -263,7 +266,7 @@ function buildControls() {
   search.oninput = function () { State.search = search.value; redrawBody(); };
   bar.appendChild(search);
 
-  if (State.companies.length) {
+  if (State.companies.length && !State.activeCompany) {
     const cs = el('select', 'ctl-sel');
     cs.appendChild(opt('', 'All companies', State.companyFilter));
     State.companies.forEach(function (c) { cs.appendChild(opt(c, c, State.companyFilter)); });
@@ -345,6 +348,48 @@ function taskRow(t) {
 }
 
 /* ------------- render dispatch ------------- */
+function drawView() {
+  if (State.activeCompany == null) drawCompanyGrid();
+  else drawKanban();
+}
+
+function drawCompanyGrid() {
+  const main = $('#main'); main.innerHTML = '';
+  const counts = {};
+  State.tasks.forEach(function (t) { const c = String(t.Company || ''); if (c) counts[c] = (counts[c] || 0) + 1; });
+
+  const grid = el('div', 'board-grid');
+  State.companies.forEach(function (c) {
+    const n = counts[c] || 0;
+    const card = el('button', 'board-tile');
+    card.innerHTML = '<span class="tile-type">' + esc(c) + '</span>' +
+      '<span class="tile-go">' + n + ' task' + (n === 1 ? '' : 's') + ' →</span>';
+    card.onclick = function () { nav('board/' + encodeURIComponent(State.board.taskType) + '/' + encodeURIComponent(c)); };
+    grid.appendChild(card);
+  });
+  if (State.me.isAdmin) {
+    const add = el('button', 'board-tile tile-add', '<span class="tile-type">+ New company</span>');
+    add.onclick = addCompanyPrompt;
+    grid.appendChild(add);
+  }
+  main.appendChild(grid);
+}
+
+async function addCompanyPrompt() {
+  const name = (window.prompt('New company name:') || '').trim();
+  if (!name) return;
+  try {
+    const cur = (await apiCall('getCompaniesAdmin')).companies; // [{name, active}]
+    if (cur.some(function (c) { return String(c.name).toLowerCase() === name.toLowerCase(); })) { toast('Company already exists'); return; }
+    cur.push({ name: name, active: true });
+    await apiCall('saveCompanies', { companies: cur });
+    if (State.companies.indexOf(name) < 0) State.companies.push(name);
+    persistBoardCache();
+    toast('Company added');
+    drawCompanyGrid();
+  } catch (e) { toast(e.message); }
+}
+
 function drawKanban() {
   const main = $('#main'); main.innerHTML = '';
 
@@ -521,7 +566,7 @@ function renderCompanyEl(task, allowDefine) {
   cwrap.appendChild(el('span', 'fld-label', 'Company •'));
   const csel = el('select');
   const blank = el('option'); blank.value = ''; blank.textContent = '—'; csel.appendChild(blank);
-  const cur = task ? (task.Company || '') : '';
+  const cur = task ? (task.Company || '') : (State.activeCompany || '');
   State.companies.forEach(function (c) {
     const o = el('option'); o.value = c; o.textContent = c;
     if (String(cur) === c) o.selected = true; csel.appendChild(o);

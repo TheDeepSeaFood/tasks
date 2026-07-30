@@ -554,3 +554,5 @@ body::after {
 .ed-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 14px; }
 .ed-body .fld { margin: 0; }
 .ed-body .updates, .ed-body .history { margin-top: 0; }
+.board-tile.tile-add { border-style: dashed; color: var(--muted); font-style: normal; align-items: center; justify-content: center; text-align: center; min-height: 132px; }
+.board-tile.tile-add .tile-type { font-size: 16px; color: var(--brand-2); }
